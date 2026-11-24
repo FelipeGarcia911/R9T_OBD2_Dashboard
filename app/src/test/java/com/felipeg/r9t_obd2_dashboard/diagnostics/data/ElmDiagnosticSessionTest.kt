@@ -5,6 +5,7 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticStage
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
+import java.io.IOException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
@@ -193,6 +194,73 @@ class ElmDiagnosticSessionTest {
         }
     }
 
+    @Test
+    fun reconnectsOnItsOwnAfterALiveLinkDrops() = runBlocking {
+        lateinit var transport: ScriptedTransport
+        var rpmRequests = 0
+        transport = ScriptedTransport { command ->
+            when (command) {
+                "0100" -> "41 00 00 10 00 00\r>"
+                "ATDP" -> "ISO 15765-4\r>"
+                "010C" -> if (transport.opens == 1 && ++rpmRequests > 1) {
+                    throw IOException("Link dropped")
+                } else "41 0C 1A F8\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport, reconnectDelayMillis = { 10 })
+        try {
+            session.start("paired-device")
+            val reconnecting = withTimeout(2_000) {
+                session.state.filterIsInstance<DiagnosticState.Reconnecting>().first()
+            }
+            assertEquals(DiagnosticState.Reconnecting(1, DiagnosticError.CONNECTION_LOST), reconnecting)
+            withTimeout(2_000) {
+                session.state.first { it is DiagnosticState.Live && transport.opens == 2 }
+            }
+            assertTrue(session.trace.value.any { it.description.startsWith("Reconnecting in") })
+        } finally {
+            session.stop()
+        }
+        assertTrue(transport.closed)
+        assertEquals(DiagnosticState.Disconnected, session.state.value)
+    }
+
+    @Test
+    fun givesUpAfterTheReconnectLimit() = runBlocking {
+        var rpmRequests = 0
+        val transport = ScriptedTransport(onOpen = { attempt ->
+            if (attempt > 1) throw IOException("Adapter out of range")
+        }) { command ->
+            when (command) {
+                "0100" -> "41 00 00 10 00 00\r>"
+                "ATDP" -> "ISO 15765-4\r>"
+                "010C" -> if (++rpmRequests > 1) throw IOException("Link dropped") else "41 0C 1A F8\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport, reconnectDelayMillis = { 0 })
+        try {
+            session.start("paired-device")
+            val failure = withTimeout(2_000) {
+                session.state.filterIsInstance<DiagnosticState.Failed>().first()
+            }
+            assertEquals(
+                DiagnosticState.Failed(DiagnosticStage.BLUETOOTH, DiagnosticError.ADAPTER_UNREACHABLE),
+                failure,
+            )
+            assertEquals(1 + MAX_RECONNECTS, transport.opens)
+        } finally {
+            session.stop()
+        }
+    }
+
+    @Test
+    fun reconnectBackoffDoublesUpToTenSeconds() {
+        assertEquals(listOf(1_000L, 2_000L, 4_000L, 8_000L, 10_000L, 10_000L),
+            (1..6).map(::reconnectBackoffMillis))
+    }
+
     private fun initReply(command: String): String = when (command) {
         "ATZ", "ATI" -> "ELM327 v1.5\r>"
         "ATE0", "ATH0", "ATSP0" -> "OK\r>"
@@ -201,12 +269,17 @@ class ElmDiagnosticSessionTest {
 
     private class ScriptedTransport(
         private var partialResponse: String? = null,
+        private val onOpen: (attempt: Int) -> Unit = {},
         private val reply: suspend (String) -> String,
     ) : ElmTransport {
         override fun takePartialResponse(): String? = partialResponse.also { partialResponse = null }
         val commands = mutableListOf<String>()
         var closed = false
-        override suspend fun open(adapterId: String) = Unit
+        var opens = 0
+        override suspend fun open(adapterId: String) {
+            closed = false
+            onOpen(++opens)
+        }
         override suspend fun exchange(command: String): String {
             commands += command
             return reply(command)

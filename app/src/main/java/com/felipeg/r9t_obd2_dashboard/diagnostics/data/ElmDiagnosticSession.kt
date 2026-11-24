@@ -16,20 +16,31 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private const val RPM_PERIOD_MS = 120L
 private const val SPEED_PERIOD_MS = 250L
 private const val OTHER_SENSOR_PERIOD_MS = 600L
+internal const val MAX_RECONNECTS = 10
+
+/** Errors that another attempt cannot fix without the rider's intervention. */
+private val PERMANENT_ERRORS = setOf(
+    DiagnosticError.PERMISSION_DENIED,
+    DiagnosticError.BLUETOOTH_DISABLED,
+    DiagnosticError.LOG_WRITE_FAILED,
+)
+
+/** 1 s, 2 s, 4 s, 8 s, then every 10 s. */
+internal fun reconnectBackoffMillis(attempt: Int): Long =
+    (1_000L shl (attempt - 1).coerceIn(0, 4)).coerceAtMost(10_000L)
 
 internal class ElmDiagnosticSession(
     private val scope: CoroutineScope,
     private val transport: ElmTransport,
+    private val reconnectDelayMillis: (attempt: Int) -> Long = ::reconnectBackoffMillis,
     private val startLog: suspend () -> ElmSessionLog? = { null },
 ) : DiagnosticSession {
     private val mutableState = MutableStateFlow<DiagnosticState>(DiagnosticState.Disconnected)
@@ -40,9 +51,12 @@ internal class ElmDiagnosticSession(
     private var stage = DiagnosticStage.BLUETOOTH
     private var pendingCommand: String? = null
     private var sessionLog: ElmSessionLog? = null
+    private var everLive = false
+    private var reachedLive = false
 
     override suspend fun start(adapterId: String) {
         if (job?.isActive == true) return
+        everLive = false
         mutableTrace.value = emptyList()
         stage = DiagnosticStage.BLUETOOTH
         pendingCommand = null
@@ -51,49 +65,30 @@ internal class ElmDiagnosticSession(
             var endReason = "Session ended"
             try {
                 sessionLog = startLog()
-                record("Opening direct Bluetooth link to ELM327")
-                transport.open(adapterId)
-                record("Bluetooth link connected")
-                stage = DiagnosticStage.ADAPTER
-                mutableState.value = DiagnosticState.WaitingForAdapter
-                exchange("ATZ", "Reset adapter")
-                val identification = exchange("ATI", "Identify adapter")
-                if (answer(identification) == null) invalidResponse()
-                configure("ATE0", "Disable echo")
-                configure("ATH0", "Disable headers")
-                configure("ATSP0", "Select protocol automatically")
-
-                stage = DiagnosticStage.ECU
-                mutableState.value = DiagnosticState.WaitingForEcu
-                val support = exchange("0100", "Read supported PIDs")
-                val supported = ObdPidDecoder.supportedPids(support) ?: run {
-                    val noData = support.substringBefore('>').lineSequence()
-                        .any { it.trim().equals("NO DATA", ignoreCase = true) }
-                    if (noData) throw ElmTransportException(DiagnosticError.NO_ECU_DATA)
-                    invalidResponse()
+                var reconnects = 0
+                while (true) {
+                    reachedLive = false
+                    val error = attempt(adapterId)
+                    if (reachedLive) reconnects = 0
+                    recordFailure(error)
+                    // Only a session that already produced readings reconnects on its own.
+                    // A first connection that fails is reported so the rider can fix the setup.
+                    if (!everLive || error in PERMANENT_ERRORS || reconnects >= MAX_RECONNECTS) {
+                        mutableState.value = DiagnosticState.Failed(stage, error)
+                        break
+                    }
+                    reconnects++
+                    val wait = reconnectDelayMillis(reconnects)
+                    mutableState.value = DiagnosticState.Reconnecting(reconnects, error)
+                    record("Reconnecting in ${wait / 1_000.0} s · attempt $reconnects of $MAX_RECONNECTS")
+                    delay(wait)
                 }
-                recordPidSupport(supported, 0x0C, "010C", "Engine speed")
-                recordPidSupport(supported, 0x0D, "010D", "Vehicle speed")
-                val protocol = answer(exchange("ATDP", "Read active protocol"))
-                val advertised = discoverSupportedPids(supported)
-                stage = DiagnosticStage.POLLING
-                poll(protocol, advertised)
-            } catch (_: TimeoutCancellationException) {
-                fail(DiagnosticError.TIMEOUT)
             } catch (_: ElmLogException) {
                 loggingFailed()
-            } catch (error: ElmTransportException) {
-                fail(error.error)
-            } catch (_: SecurityException) {
-                fail(DiagnosticError.PERMISSION_DENIED)
-            } catch (_: IOException) {
-                fail(if (stage == DiagnosticStage.BLUETOOTH) DiagnosticError.ADAPTER_UNREACHABLE
-                    else DiagnosticError.CONNECTION_LOST)
             } catch (cancelled: CancellationException) {
                 endReason = "Session cancelled or disconnected"
                 throw cancelled
             } finally {
-                transport.close()
                 withContext(NonCancellable) {
                     try {
                         val partial = transport.takePartialResponse()
@@ -109,6 +104,63 @@ internal class ElmDiagnosticSession(
                 }
             }
         }
+    }
+
+    /** Runs one connection until it fails. Log failures and cancellation propagate. */
+    private suspend fun attempt(adapterId: String): DiagnosticError {
+        stage = DiagnosticStage.BLUETOOTH
+        pendingCommand = null
+        return try {
+            connectAndPoll(adapterId)
+        } catch (error: ElmLogException) {
+            throw error
+        } catch (_: TimeoutCancellationException) {
+            DiagnosticError.TIMEOUT
+        } catch (error: ElmTransportException) {
+            error.error
+        } catch (_: SecurityException) {
+            DiagnosticError.PERMISSION_DENIED
+        } catch (_: IOException) {
+            if (stage == DiagnosticStage.BLUETOOTH) DiagnosticError.ADAPTER_UNREACHABLE
+            else DiagnosticError.CONNECTION_LOST
+        } finally {
+            transport.close()
+        }
+    }
+
+    private suspend fun connectAndPoll(adapterId: String): Nothing {
+        record("Opening direct Bluetooth link to ELM327")
+        transport.open(adapterId)
+        record("Bluetooth link connected")
+        stage = DiagnosticStage.ADAPTER
+        showProgress(DiagnosticState.WaitingForAdapter)
+        exchange("ATZ", "Reset adapter")
+        val identification = exchange("ATI", "Identify adapter")
+        if (answer(identification) == null) invalidResponse()
+        configure("ATE0", "Disable echo")
+        configure("ATH0", "Disable headers")
+        configure("ATSP0", "Select protocol automatically")
+
+        stage = DiagnosticStage.ECU
+        showProgress(DiagnosticState.WaitingForEcu)
+        val support = exchange("0100", "Read supported PIDs")
+        val supported = ObdPidDecoder.supportedPids(support) ?: run {
+            val noData = support.substringBefore('>').lineSequence()
+                .any { it.trim().equals("NO DATA", ignoreCase = true) }
+            if (noData) throw ElmTransportException(DiagnosticError.NO_ECU_DATA)
+            invalidResponse()
+        }
+        recordPidSupport(supported, 0x0C, "010C", "Engine speed")
+        recordPidSupport(supported, 0x0D, "010D", "Vehicle speed")
+        val protocol = answer(exchange("ATDP", "Read active protocol"))
+        val advertised = discoverSupportedPids(supported)
+        stage = DiagnosticStage.POLLING
+        poll(protocol, advertised)
+    }
+
+    /** Keeps the reconnecting state visible until readings resume. */
+    private fun showProgress(next: DiagnosticState) {
+        if (mutableState.value !is DiagnosticState.Reconnecting) mutableState.value = next
     }
 
     override suspend fun stop() {
@@ -161,7 +213,7 @@ internal class ElmDiagnosticSession(
         return supported.toSet()
     }
 
-    private suspend fun poll(protocol: String?, advertised: Set<Int>) {
+    private suspend fun poll(protocol: String?, advertised: Set<Int>): Nothing {
         val sensors = ObdTelemetryCatalog.pids.filter { it.id in advertised }
         val speedSupported = 0x0D in advertised
         val rpmSupported = 0x0C in advertised
@@ -171,11 +223,14 @@ internal class ElmDiagnosticSession(
             telemetry = TelemetrySnapshot(advertised),
         )
         mutableState.value = live
+        reachedLive = true
+        everLive = true
         var nextSpeedAt = if (speedSupported) monotonicMillis() + SPEED_PERIOD_MS else Long.MAX_VALUE
         var nextSensorAt = if (sensors.isNotEmpty()) monotonicMillis() else Long.MAX_VALUE
         delay(RPM_PERIOD_MS)
 
-        while (currentCoroutineContext().isActive) {
+        // Exits only by exception: an exchange failure or cancellation during delay.
+        while (true) {
             val cycleStartedAt = monotonicMillis()
             if (rpmSupported) {
                 live = live.copy(engineRpm = readRpm(true))
@@ -247,13 +302,10 @@ internal class ElmDiagnosticSession(
 
     private fun invalidResponse(): Nothing = throw ElmTransportException(DiagnosticError.INVALID_RESPONSE)
 
-    private suspend fun fail(error: DiagnosticError) {
+    private suspend fun recordFailure(error: DiagnosticError) {
         try {
             val partial = transport.takePartialResponse()
             record(error.name.replace('_', ' ').lowercase(), pendingCommand, partial, ElmLogEvent.ERROR)
-            mutableState.value = DiagnosticState.Failed(stage, error)
-        } catch (_: ElmLogException) {
-            loggingFailed()
         } finally {
             pendingCommand = null
         }

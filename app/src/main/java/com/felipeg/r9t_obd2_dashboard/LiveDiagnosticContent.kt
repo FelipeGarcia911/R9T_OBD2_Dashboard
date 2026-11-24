@@ -54,9 +54,11 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
     val logs = remember(application) { ElmSessionLogs(File(application.noBackupFilesDir, "elm327-logs")) }
     val model = remember(activity) {
         val factory = DiagnosticViewModel.factory { scope ->
-            ElmDiagnosticSession(scope, RfcommElmTransport(application)) {
-                if (settings.detailedLogging) logs.start() else null
-            }
+            ElmDiagnosticSession(
+                scope,
+                RfcommElmTransport(application),
+                startLog = { if (settings.detailedLogging) logs.start() else null },
+            )
         }
         ViewModelProvider(activity, factory).get("live-diagnostics", DiagnosticViewModel::class.java)
     }

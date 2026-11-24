@@ -28,6 +28,12 @@ sealed interface DiagnosticState {
         val telemetry: TelemetrySnapshot = TelemetrySnapshot(),
     ) : DiagnosticState
 
+    /**
+     * A session that was live lost its link and is retrying on its own. Readings are discarded
+     * until the session is live again. [attempt] starts at 1.
+     */
+    data class Reconnecting(val attempt: Int, val cause: DiagnosticError) : DiagnosticState
+
     /** The failure stage records the last step attempted. Previous readings are discarded. */
     data class Failed(val stage: DiagnosticStage, val error: DiagnosticError) : DiagnosticState
 }

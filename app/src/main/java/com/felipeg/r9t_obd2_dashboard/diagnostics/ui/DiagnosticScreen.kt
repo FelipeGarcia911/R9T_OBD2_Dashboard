@@ -158,6 +158,7 @@ private fun DiagnosticState.statusText(): String = when (this) {
     DiagnosticState.WaitingForAdapter -> "Bluetooth connected · Waiting for ELM327…"
     DiagnosticState.WaitingForEcu -> "ELM327 responded · Waiting for ECU…"
     is DiagnosticState.Live -> "ECU responding"
+    is DiagnosticState.Reconnecting -> "${cause.label()} · Reconnecting (attempt $attempt)…"
     is DiagnosticState.Failed -> "${stage.label()}: ${error.label()}"
 }
 
