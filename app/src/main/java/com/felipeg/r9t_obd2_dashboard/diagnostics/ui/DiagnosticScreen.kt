@@ -192,6 +192,7 @@ private fun DiagnosticError.label(): String = when (this) {
     DiagnosticError.BLUETOOTH_DISABLED -> "Bluetooth disabled"
     DiagnosticError.ADAPTER_UNREACHABLE -> "Adapter unreachable. Check power and close other OBD-II apps."
     DiagnosticError.TIMEOUT -> "Response timed out"
+    DiagnosticError.LOG_WRITE_FAILED -> "Could not save the session log. Check available storage."
     DiagnosticError.NO_ECU_DATA -> "No ECU data. Check the ignition and diagnostic connector."
     DiagnosticError.INVALID_RESPONSE -> "Invalid response"
     DiagnosticError.CONNECTION_LOST -> "Connection lost"

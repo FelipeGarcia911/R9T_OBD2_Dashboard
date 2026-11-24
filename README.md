@@ -31,9 +31,11 @@ The decoder tests cover valid readings, zero values, missing or malformed respon
 
 ### Test a physical adapter
 
-1. Power the ELM327 and pair it in Android Bluetooth settings. Close Torque to free the adapter connection.
+The app opens an RFCOMM connection directly to the ELM327. Torque is optional and serves as a separate comparison tool during field testing.
+
+1. Power the ELM327 and pair it in Android Bluetooth settings. Close any OBD-II app already connected to the adapter.
 2. In live diagnostics, select **Connect**, allow **Nearby devices**, and choose the paired adapter.
-3. Look for the `ATI` adapter response and then a valid `0100` ECU response in the session log. Use **Copy session log** before retrying. Gear and odometer remain unavailable in live mode until their sources are verified.
+3. Look for the `ATI` adapter response and then a valid `0100` ECU response in the session log. Use **Session logs** to select and export the complete JSON Lines capture. In **Settings**, use **Detailed ELM327 logging** to control file capture for the next connection. It is on by default. Captures are saved privately on the phone until exported. Gear and odometer remain unavailable in live mode until their sources are verified.
 
 Build the debug APK and run JVM tests from the repository root:
 

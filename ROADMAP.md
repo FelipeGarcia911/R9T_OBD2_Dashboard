@@ -94,7 +94,7 @@ The native Android app will display live data from the 2023 BMW R nineT Scramble
 
 ### Delivery checkpoints
 
-- **Current status.** UOW-00 and UOW-03 provide the session contract and tested decoder. UOW-05A has a debug demo with scripted telemetry and unit tests for the displayed rates. RFCOMM and the read-only ELM327 session are implemented. UOW-02, UOW-04, and UOW-05 still require validation on the reference phone, adapter, and motorcycle. UOW-01 and UOW-06A can proceed independently.
+- **Current status.** UOW-00 and UOW-03 provide the session contract and tested decoder. UOW-05A has a debug demo with scripted telemetry and unit tests for the displayed rates. RFCOMM, the read-only ELM327 session, and exportable per-session logs are implemented. UOW-02, UOW-04, and UOW-05 still require validation on the reference phone, adapter, and motorcycle. For the first field test, export the JSON Lines log after disconnecting and verify the adapter reply to `ATI`, the ECU reply to `0100`, the active protocol, and any subsequent RPM and speed samples. UOW-01 and UOW-06A can proceed independently.
 - **First functional release.** Close UOW-00 through UOW-05, including UOW-05A, with the diagnostic app verified on the target equipment.
 - **Dashboard release.** Close UOW-06 after reviewing the diagnostic results. Track verified gear and odometer integration in UOW-07 and UOW-08.
 - **Close each unit.** Record its build, applicable test results, and field evidence in the repository. Review any proposed scope changes before adding them to a unit.

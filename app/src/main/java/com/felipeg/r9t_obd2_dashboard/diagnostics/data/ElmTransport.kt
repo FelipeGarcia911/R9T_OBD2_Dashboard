@@ -7,6 +7,7 @@ import java.io.IOException
 internal interface ElmTransport {
     suspend fun open(adapterId: String)
     suspend fun exchange(command: String): String
+    fun takePartialResponse(): String? = null
     fun close()
 }
 

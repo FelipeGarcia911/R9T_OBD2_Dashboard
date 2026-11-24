@@ -29,6 +29,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.flowWithLifecycle
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmDiagnosticSession
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmSessionLogs
+import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.ElmLogControls
+import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.ElmLogSettings
+import java.io.File
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.RfcommElmTransport
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticScreen
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticViewModel
@@ -41,9 +45,14 @@ private data class PairedAdapter(val id: String, val name: String)
 @Composable
 internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)? = null) {
     val activity = LocalContext.current as ComponentActivity
+    val application = activity.applicationContext
+    val settings = remember(application) { ElmLogSettings(application) }
+    val logs = remember(application) { ElmSessionLogs(File(application.noBackupFilesDir, "elm327-logs")) }
     val model = remember(activity) {
         val factory = DiagnosticViewModel.factory { scope ->
-            ElmDiagnosticSession(scope, RfcommElmTransport(activity.applicationContext))
+            ElmDiagnosticSession(scope, RfcommElmTransport(application)) {
+                if (settings.detailedLogging) logs.start() else null
+            }
         }
         ViewModelProvider(activity, factory).get("live-diagnostics", DiagnosticViewModel::class.java)
     }
@@ -88,6 +97,7 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
         }
     }
     Column(modifier) {
+        ElmLogControls(settings, logs)
         if (onShowDemo != null) {
             OutlinedButton(onClick = {
                 model.disconnect()

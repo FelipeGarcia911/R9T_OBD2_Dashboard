@@ -18,6 +18,7 @@ import kotlinx.coroutines.withTimeout
 
 internal class RfcommElmTransport(private val context: Context) : ElmTransport {
     private var socket: BluetoothSocket? = null
+    private var partialResponse: StringBuffer? = null
 
     @SuppressLint("MissingPermission")
     override suspend fun open(adapterId: String) {
@@ -39,16 +40,22 @@ internal class RfcommElmTransport(private val context: Context) : ElmTransport {
 
     override suspend fun exchange(command: String): String {
         val connection = socket ?: throw IOException("Socket is closed")
+        val response = StringBuffer()
+        partialResponse = response
         return socketOperation(connection, 8_000) {
             connection.outputStream.write("$command\r".toByteArray(Charsets.US_ASCII))
             connection.outputStream.flush()
-            readResponse(connection)
-        }
+            readResponse(connection, response)
+        }.also { partialResponse = null }
     }
 
-    private fun readResponse(connection: BluetoothSocket): String {
+    override fun takePartialResponse(): String? = partialResponse?.let { response ->
+        partialResponse = null
+        response.toString().ifEmpty { null }
+    }
+
+    private fun readResponse(connection: BluetoothSocket, response: StringBuffer): String {
         val input = connection.inputStream
-        val response = StringBuilder()
         repeat(8192) {
             val next = input.read()
             when (next) {

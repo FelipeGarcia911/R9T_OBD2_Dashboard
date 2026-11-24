@@ -3,6 +3,7 @@ package com.felipeg.r9t_obd2_dashboard.diagnostics.data
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticError
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticStage
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.filterIsInstance
@@ -39,6 +40,9 @@ class ElmDiagnosticSessionTest {
             assertEquals(1726.0, (live.engineRpm as SignalReading.Sample).value, 0.0)
             assertEquals(SignalReading.Unavailable, live.speedKmh)
             assertEquals("AUTO, ISO 15765-4 (CAN)", live.protocol)
+            assertTrue(session.trace.value.any {
+                it.description == "Vehicle speed (010D) · not advertised by the ECU" && it.command == null
+            })
             assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATSP0", "0100", "ATDP", "010C"),
                 transport.commands)
             assertTrue(session.trace.value.any { it.command == "010C" && it.response == "41 0C 1A F8\r>" })
@@ -102,13 +106,41 @@ class ElmDiagnosticSessionTest {
         assertEquals(DiagnosticState.Disconnected, session.state.value)
     }
 
+    @Test
+    fun savesEveryCommandBeforeSendingAndRecordsPartialTimeoutAndEnd() = runBlocking {
+        val events = mutableListOf<Pair<ElmLogEvent, DiagnosticTraceEntry>>()
+        val transport = ScriptedTransport(partialResponse = "SEARCHING...\r41 00") { command ->
+            assertEquals(ElmLogEvent.TX_ATTEMPT, events.last().first)
+            assertEquals(command, events.last().second.command)
+            if (command == "0100") withTimeout(25) { awaitCancellation() } else initReply(command)
+        }
+        val session = ElmDiagnosticSession(this, transport) {
+            ElmSessionLog { event, entry -> events.add(event to entry) }
+        }
+        try {
+            session.start("paired-device")
+            withTimeout(2_000) { session.state.filterIsInstance<DiagnosticState.Failed>().first() }
+        } finally {
+            session.stop()
+        }
+        assertEquals("ELM327 v1.5\r>", events.first { it.first == ElmLogEvent.RX }.second.response)
+        val failure = events.single { it.first == ElmLogEvent.ERROR }.second
+        assertEquals("0100", failure.command)
+        assertEquals("SEARCHING...\r41 00", failure.response)
+        assertEquals(ElmLogEvent.SESSION_END, events.last().first)
+    }
+
     private fun initReply(command: String): String = when (command) {
         "ATZ", "ATI" -> "ELM327 v1.5\r>"
         "ATE0", "ATH0", "ATSP0" -> "OK\r>"
         else -> error("Unexpected command: $command")
     }
 
-    private class ScriptedTransport(private val reply: suspend (String) -> String) : ElmTransport {
+    private class ScriptedTransport(
+        private var partialResponse: String? = null,
+        private val reply: suspend (String) -> String,
+    ) : ElmTransport {
+        override fun takePartialResponse(): String? = partialResponse.also { partialResponse = null }
         val commands = mutableListOf<String>()
         var closed = false
         override suspend fun open(adapterId: String) = Unit

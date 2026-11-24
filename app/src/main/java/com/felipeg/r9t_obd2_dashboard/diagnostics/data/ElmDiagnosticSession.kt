@@ -7,8 +7,11 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -20,6 +23,7 @@ import kotlinx.coroutines.launch
 internal class ElmDiagnosticSession(
     private val scope: CoroutineScope,
     private val transport: ElmTransport,
+    private val startLog: suspend () -> ElmSessionLog? = { null },
 ) : DiagnosticSession {
     private val mutableState = MutableStateFlow<DiagnosticState>(DiagnosticState.Disconnected)
     private val mutableTrace = MutableStateFlow<List<DiagnosticTraceEntry>>(emptyList())
@@ -28,6 +32,7 @@ internal class ElmDiagnosticSession(
     private var job: Job? = null
     private var stage = DiagnosticStage.BLUETOOTH
     private var pendingCommand: String? = null
+    private var sessionLog: ElmSessionLog? = null
 
     override suspend fun start(adapterId: String) {
         if (job?.isActive == true) return
@@ -36,8 +41,10 @@ internal class ElmDiagnosticSession(
         pendingCommand = null
         mutableState.value = DiagnosticState.ConnectingBluetooth
         job = scope.launch {
+            var endReason = "Session ended"
             try {
-                record("Opening Bluetooth link")
+                sessionLog = startLog()
+                record("Opening direct Bluetooth link to ELM327")
                 transport.open(adapterId)
                 record("Bluetooth link connected")
                 stage = DiagnosticStage.ADAPTER
@@ -58,6 +65,8 @@ internal class ElmDiagnosticSession(
                     if (noData) throw ElmTransportException(DiagnosticError.NO_ECU_DATA)
                     invalidResponse()
                 }
+                recordPidSupport(supported, 0x0C, "010C", "Engine speed")
+                recordPidSupport(supported, 0x0D, "010D", "Vehicle speed")
                 val protocol = answer(exchange("ATDP", "Read active protocol"))
                 stage = DiagnosticStage.POLLING
                 while (isActive) {
@@ -71,6 +80,8 @@ internal class ElmDiagnosticSession(
                 }
             } catch (_: TimeoutCancellationException) {
                 fail(DiagnosticError.TIMEOUT)
+            } catch (_: ElmLogException) {
+                loggingFailed()
             } catch (error: ElmTransportException) {
                 fail(error.error)
             } catch (_: SecurityException) {
@@ -78,8 +89,24 @@ internal class ElmDiagnosticSession(
             } catch (_: IOException) {
                 fail(if (stage == DiagnosticStage.BLUETOOTH) DiagnosticError.ADAPTER_UNREACHABLE
                     else DiagnosticError.CONNECTION_LOST)
+            } catch (cancelled: CancellationException) {
+                endReason = "Session cancelled or disconnected"
+                throw cancelled
             } finally {
                 transport.close()
+                withContext(NonCancellable) {
+                    try {
+                        val partial = transport.takePartialResponse()
+                        if (partial != null) {
+                            record("Incomplete response", pendingCommand, partial, ElmLogEvent.ERROR)
+                        }
+                        record(endReason, pendingCommand, event = ElmLogEvent.SESSION_END)
+                    } catch (_: ElmLogException) {
+                        loggingFailed()
+                    } finally {
+                        sessionLog = null
+                    }
+                }
             }
         }
     }
@@ -100,11 +127,23 @@ internal class ElmDiagnosticSession(
     }
 
     private suspend fun exchange(command: String, description: String): String {
-        pendingCommand = command
-        val response = transport.exchange(command)
-        pendingCommand = null
+        val response = transmit(command, description)
         record(description, command, response)
         return response
+    }
+
+    private suspend fun transmit(command: String, description: String): String {
+        pendingCommand = command
+        sessionLog?.append(
+            ElmLogEvent.TX_ATTEMPT,
+            DiagnosticTraceEntry(System.currentTimeMillis(), stage, description, command),
+        )
+        return transport.exchange(command).also { pendingCommand = null }
+    }
+
+    private suspend fun recordPidSupport(supported: Set<Int>, pid: Int, request: String, label: String) {
+        val availability = if (pid in supported) "supported" else "not advertised by the ECU"
+        record("$label ($request) · $availability")
     }
 
     private suspend fun readSignal(
@@ -115,13 +154,12 @@ internal class ElmDiagnosticSession(
         decode: (String) -> Double?,
     ): SignalReading {
         if (!supported) return SignalReading.Unavailable
-        pendingCommand = command
-        val response = transport.exchange(command)
-        pendingCommand = null
+        val response = transmit(command, label)
+        val receivedAtMillis = System.nanoTime() / 1_000_000
         val value = decode(response)
         record(if (value == null) "$label unavailable" else "$label · $value $unit", command, response)
         return if (value == null) SignalReading.Unavailable
-        else SignalReading.Sample(value, System.nanoTime() / 1_000_000)
+        else SignalReading.Sample(value, receivedAtMillis)
     }
 
     private fun answer(response: String): String? =
@@ -130,14 +168,34 @@ internal class ElmDiagnosticSession(
 
     private fun invalidResponse(): Nothing = throw ElmTransportException(DiagnosticError.INVALID_RESPONSE)
 
-    private fun fail(error: DiagnosticError) {
-        record(error.name.replace('_', ' ').lowercase(), pendingCommand)
-        pendingCommand = null
-        mutableState.value = DiagnosticState.Failed(stage, error)
+    private suspend fun fail(error: DiagnosticError) {
+        try {
+            val partial = transport.takePartialResponse()
+            record(error.name.replace('_', ' ').lowercase(), pendingCommand, partial, ElmLogEvent.ERROR)
+            mutableState.value = DiagnosticState.Failed(stage, error)
+        } catch (_: ElmLogException) {
+            loggingFailed()
+        } finally {
+            pendingCommand = null
+        }
     }
 
-    private fun record(description: String, command: String? = null, response: String? = null) {
+    private fun loggingFailed() {
+        sessionLog = null
+        mutableState.value = DiagnosticState.Failed(stage, DiagnosticError.LOG_WRITE_FAILED)
+    }
+
+    private suspend fun record(
+        description: String,
+        command: String? = null,
+        response: String? = null,
+        event: ElmLogEvent = if (response == null) ElmLogEvent.EVENT else ElmLogEvent.RX,
+    ) {
         val entry = DiagnosticTraceEntry(System.currentTimeMillis(), stage, description, command, response)
+        sessionLog?.let { log ->
+            withContext(NonCancellable) { log.append(event, entry) }
+        }
+        if (event == ElmLogEvent.SESSION_END) return
         val entries = mutableTrace.value + entry
         val oldestReading = entries.indexOfFirst {
             it.stage == DiagnosticStage.POLLING && it.response != null
