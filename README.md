@@ -27,7 +27,11 @@ The decoder tests cover valid readings, zero values, missing or malformed respon
 
 1. Open the project in Android Studio and sync Gradle. Install Android SDK Platform 37 and use a device or emulator running Android 14 (API 34) or later.
 2. Select the `debug` build variant and run the `app` configuration.
-3. Choose **Show simulation** to explore the demo on an Android device or emulator.
+3. Choose **Show simulation → Open dashboard** to try the five-instrument prototype. Rotate the device for the landscape layout. Select **Diagnostics** to return to the session without restarting it.
+
+### Replay a diagnostic capture
+
+In **Show simulation**, select **Example capture** or **Open capture** to choose an exported ELM327 JSON Lines file. Select **Play capture** to replay its decoded readings, timings, and errors in diagnostics. **Open dashboard** uses the same playback source. Replay runs locally and does not open a Bluetooth connection. Gear and distance are unavailable unless the data source provides them.
 
 ### Test a physical adapter
 
@@ -47,7 +51,7 @@ Build the debug APK and run JVM tests from the repository root:
 
 - Confirm the transport used by the reference ELM327 Mini.
 - Validate the read-only RFCOMM connection, readings, and update rates on the motorcycle. Add a GATT transport if the reference adapter requires BLE.
-- Prototype all five dashboard indicators with simulated telemetry, then use the field results to tune RPM and speed. Confirm reliable sources for gear and total distance before displaying them as live values.
+- Use field results to tune RPM and speed in the dashboard prototype. The prototype marks 8,500 RPM as the start of the red zone, based on the maximum engine speed published in the [BMW Motorrad R nineT Scrambler rider's manual](https://manuals.bmw-motorrad.com/manuals/BA-Extern/IN/BA-INTERNET-COM/PDF/R_0L71_RM_0421_01.pdf). Confirm reliable sources for gear and total distance before displaying them as live values.
 
 ## Author
 

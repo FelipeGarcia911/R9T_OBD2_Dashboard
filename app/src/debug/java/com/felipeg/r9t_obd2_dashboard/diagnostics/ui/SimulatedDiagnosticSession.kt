@@ -51,7 +51,7 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
             while (isActive) {
                 val timestamp = startedAt + tick * 500
                 val position = (tick % 12).toInt()
-                val rpmValue = 1_100 + position * 140
+                val rpmValue = DEMO_RPM[position]
                 val rpm = SignalReading.Sample(rpmValue.toDouble(), timestamp)
                 val encodedRpm = rpmValue * 4
                 record(
@@ -87,6 +87,11 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
         session = null
         mutableState.value = DiagnosticState.Disconnected
         record(DiagnosticStage.BLUETOOTH, "Session disconnected")
+    }
+
+    private companion object {
+        val DEMO_RPM = intArrayOf(1_100, 1_500, 2_600, 3_800, 4_900, 6_300,
+            7_600, 8_450, 6_900, 4_600, 2_900, 1_700)
     }
 
     private fun hex(value: Int): String = value.toString(16).uppercase().padStart(2, '0')

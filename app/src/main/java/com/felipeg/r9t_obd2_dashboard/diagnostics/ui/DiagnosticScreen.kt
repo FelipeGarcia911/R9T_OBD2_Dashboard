@@ -12,17 +12,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalContext
 import android.content.ClipData
-import android.text.format.DateFormat
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticError
@@ -33,7 +26,6 @@ import com.felipeg.r9t_obd2_dashboard.ui.theme.R9T_OBD2_DashboardTheme
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
 import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -48,6 +40,8 @@ internal fun DiagnosticScreen(
     modifier: Modifier = Modifier,
     onSimulateTimeout: (() -> Unit)? = null,
     trace: List<DiagnosticTraceEntry> = emptyList(),
+    sourceLabel: String? = if (onSimulateTimeout != null) "Simulated telemetry" else null,
+    connectLabel: String = "Connect",
 ) {
     val session = state.session
     val live = session as? DiagnosticState.Live
@@ -57,8 +51,8 @@ internal fun DiagnosticScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text("Diagnostics", style = MaterialTheme.typography.headlineLarge)
-        if (onSimulateTimeout != null) {
-            Text("Simulated telemetry", style = MaterialTheme.typography.labelLarge)
+        if (sourceLabel != null) {
+            Text(sourceLabel, style = MaterialTheme.typography.labelLarge)
         }
         Text("BMW R nineT Scrambler · 2023")
         Card(Modifier.fillMaxWidth()) {
@@ -79,11 +73,11 @@ internal fun DiagnosticScreen(
             null -> "Unavailable"
         }
         ValueCard("Gear", gear)
-        LocalClockCard()
+        ValueCard("Local time", rememberDashboardClock())
         val distance = live?.odometerKm as? SignalReading.Sample
         ValueCard("Odometer", distance?.let { "${format(it.value)} km" } ?: "Unavailable")
         if (canConnect) {
-            Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Connect") }
+            Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text(connectLabel) }
             if (onSimulateTimeout != null) {
                 OutlinedButton(onClick = onSimulateTimeout, modifier = Modifier.fillMaxWidth()) {
                     Text("Simulate ECU timeout")
@@ -96,19 +90,6 @@ internal fun DiagnosticScreen(
         }
         SessionLog(trace)
     }
-}
-
-@Composable
-private fun LocalClockCard() {
-    val context = LocalContext.current
-    var now by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            now = System.currentTimeMillis()
-            delay(60_000 - now % 60_000)
-        }
-    }
-    ValueCard("Local time", DateFormat.getTimeFormat(context).format(now))
 }
 
 @Composable
