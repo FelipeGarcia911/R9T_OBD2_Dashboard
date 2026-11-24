@@ -51,6 +51,7 @@ enum class DiagnosticError {
     BLUETOOTH_DISABLED,
     ADAPTER_UNREACHABLE,
     TIMEOUT,
+    NO_ECU_DATA,
     INVALID_RESPONSE,
     CONNECTION_LOST,
 }

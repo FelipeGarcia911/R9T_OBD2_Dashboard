@@ -6,10 +6,10 @@ The native Android app will display live data from the 2023 BMW R nineT Scramble
 
 - **Project baseline.** The Kotlin and Jetpack Compose project is in a local Git repository on `main`.
 - **MVP.** Connect to the adapter, distinguish the Bluetooth link from the ELM327 and ECU responses, and display the detected protocol, RPM, speed, and session errors.
-- **Open decision.** Confirm the connection type configured in Torque. For Bluetooth Classic with SPP, use RFCOMM. For BLE, identify the adapter's GATT service and characteristics before implementing the transport.
+- **Open decision.** RFCOMM/SPP is the first implementation. The reference adapter's transport remains unverified. If it requires BLE, identify its GATT service and characteristics and implement the same transport interface.
 - **Field reference.** Record the phone model, Android version, Torque configuration, and observed sensors. Use RPM and speed as the primary comparison signals.
 - **Planning status.** The MVP scope, unit dependencies, acceptance criteria, and Clean Architecture boundaries are agreed. Planning is complete.
-- **Construction handoff.** Start UOW-00 (diagnostic contract), UOW-01 (reference setup), and UOW-03 (decoder). UOW-02 requires transport confirmation from UOW-01. The two UI units can start once UOW-00 closes.
+- **Construction handoff.** Start UOW-00 (diagnostic contract), UOW-01 (reference setup), and UOW-03 (decoder). UOW-02 starts with RFCOMM as a working assumption. Confirm it on the reference hardware in UOW-01 and UOW-02. The two UI units can start once UOW-00 closes.
 
 ## 2. Construction · Units of work
 
@@ -30,7 +30,7 @@ The native Android app will display live data from the 2023 BMW R nineT Scramble
 
 ### UOW-02 · Connect to the adapter
 
-**Depends on:** UOW-01.
+**Depends on:** UOW-01 for hardware acceptance. Implementation can proceed with RFCOMM as the initial assumption.
 
 - **Scope.** Implement the selected transport, adapter selection, Android permissions, and a minimal connect/disconnect control. Bound connection attempts and release resources on cancellation or link loss.
 - **Done when.** On the physical phone, the user can select the adapter, connect, disconnect, and reconnect. Permission denial, disabled Bluetooth, and an unreachable adapter each produce actionable feedback. Verification ends at the Bluetooth link.
@@ -94,7 +94,7 @@ The native Android app will display live data from the 2023 BMW R nineT Scramble
 
 ### Delivery checkpoints
 
-- **Current status.** UOW-00 and UOW-03 provide the session contract and tested decoder. UOW-05A has a debug demo with scripted telemetry and unit tests for the displayed rates. Device walkthrough and hardware validation remain pending. UOW-01 and UOW-06A can proceed independently.
+- **Current status.** UOW-00 and UOW-03 provide the session contract and tested decoder. UOW-05A has a debug demo with scripted telemetry and unit tests for the displayed rates. RFCOMM and the read-only ELM327 session are implemented. UOW-02, UOW-04, and UOW-05 still require validation on the reference phone, adapter, and motorcycle. UOW-01 and UOW-06A can proceed independently.
 - **First functional release.** Close UOW-00 through UOW-05, including UOW-05A, with the diagnostic app verified on the target equipment.
 - **Dashboard release.** Close UOW-06 after reviewing the diagnostic results. Track verified gear and odometer integration in UOW-07 and UOW-08.
 - **Close each unit.** Record its build, applicable test results, and field evidence in the repository. Review any proposed scope changes before adding them to a unit.
