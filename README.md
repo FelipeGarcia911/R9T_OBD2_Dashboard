@@ -8,7 +8,7 @@ The debug build includes an interactive Compose diagnostic screen with simulated
 
 The diagnostics screen also shows simulated gear and odometer readings alongside the phone's local time. The OBD-II session log explains each command, shows raw replies and decoded values, and can be copied for troubleshooting. The simulator keeps the current session in memory, preserving connection events and up to 120 entries in total. Copy the log before starting another session.
 
-The demo produces two RPM samples and one speed sample per simulated second when both readings are available. These rates are fixtures for testing the interface. Torque has already displayed RPM and speed with the reference motorcycle and adapter. The app includes an RFCOMM implementation. Its compatibility with the reference adapter and a comparison with Torque still require a hardware test.
+The demo produces two RPM samples and one speed sample per simulated second when both readings are available. These rates are fixtures for testing the interface. Torque has already displayed RPM and speed with the reference motorcycle and adapter. Direct RFCOMM was verified on the reference motorcycle. A stationary field capture showed 1,831.5 RPM and 0 km/h over ISO 15765-4 CAN (11-bit, 500 kbit/s).
 
 ## Engineering approach
 
@@ -21,7 +21,7 @@ I separated the session contract from Bluetooth and the UI so each part can evol
 | `diagnostics/ui` | ViewModel, Compose screen, and previews |
 | `src/debug` | Demo entry point and scripted telemetry |
 
-The decoder tests cover valid readings, zero values, missing or malformed responses, and unrelated PIDs. The project uses Kotlin, Jetpack Compose, Material 3, AndroidX ViewModel, and coroutines. The [AI-DLC roadmap](ROADMAP.md) records work units, dependencies, and acceptance criteria.
+The decoder tests cover valid readings, zero values, missing or malformed responses, and unrelated PIDs. The project uses Kotlin, Jetpack Compose, Material 3, AndroidX ViewModel, and coroutines. The [AI-DLC roadmap](ROADMAP.md) records work units, dependencies, and acceptance criteria. The [OBD-II telemetry inventory](docs/OBD_TELEMETRY.md) lists the PIDs verified on the motorcycle, example readings, units, and the state exposed to screens.
 
 ## Run locally
 
@@ -39,7 +39,7 @@ The app opens an RFCOMM connection directly to the ELM327. Torque is optional an
 
 1. Power the ELM327 and pair it in Android Bluetooth settings. Close any OBD-II app already connected to the adapter.
 2. In live diagnostics, select **Connect**, allow **Nearby devices**, and choose the paired adapter.
-3. Look for the `ATI` adapter response and then a valid `0100` ECU response in the session log. Use **Session logs** to select and export the complete JSON Lines capture. In **Settings**, use **Detailed ELM327 logging** to control file capture for the next connection. It is on by default. Captures are saved privately on the phone until exported. Gear and odometer remain unavailable in live mode until their sources are verified.
+3. Look for the `ATI` adapter response and then a valid `0100` ECU response in the session log. Use **Session logs** to select and export the complete JSON Lines capture. In **Settings**, use **Detailed ELM327 logging** to control file capture for the next connection. It is on by default. Captures are saved privately on the phone until exported. Open **Dashboard** from live diagnostics to view the current RPM, speed, and the phone's local time. The motorcycle's standard PID support scan ended at `0180` without advertising gear (`01A4`) or odometer (`01A6`), so those fields remain unavailable in live mode.
 
 Build the debug APK and run JVM tests from the repository root:
 

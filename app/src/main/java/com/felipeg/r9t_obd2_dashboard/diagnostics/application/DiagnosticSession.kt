@@ -25,6 +25,7 @@ sealed interface DiagnosticState {
         val speedKmh: SignalReading,
         val gear: GearPosition? = null,
         val odometerKm: SignalReading = SignalReading.Unavailable,
+        val telemetry: TelemetrySnapshot = TelemetrySnapshot(),
     ) : DiagnosticState
 
     /** The failure stage records the last step attempted. Previous readings are discarded. */

@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
@@ -24,10 +25,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.flowWithLifecycle
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardScreen
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmDiagnosticSession
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmSessionLogs
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.ElmLogControls
@@ -63,6 +67,7 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
     val traces = remember(model, lifecycle) { model.trace.flowWithLifecycle(lifecycle) }
     val initialTrace = remember(model) { model.trace.value }
     val trace by traces.collectAsState(initialTrace)
+    var showDashboard by rememberSaveable { mutableStateOf(false) }
     var adapters by remember { mutableStateOf<List<PairedAdapter>>(emptyList()) }
     var notice by remember { mutableStateOf<String?>(null) }
     var showPermissionSettings by remember { mutableStateOf(false) }
@@ -96,6 +101,16 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
             notice = "Nearby devices access is required to list paired adapters and connect."
         }
     }
+    if (showDashboard) {
+        BackHandler { showDashboard = false }
+        DashboardScreen(
+            state = state.session,
+            onDiagnostics = { showDashboard = false },
+            modifier = modifier,
+            sourceLabel = "Live ELM327",
+        )
+        return
+    }
     Column(modifier) {
         ElmLogControls(settings, logs)
         if (onShowDemo != null) {
@@ -104,6 +119,10 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
                 onShowDemo()
             }) { Text("Show simulation") }
         }
+        OutlinedButton(
+            enabled = state.session is DiagnosticState.Live,
+            onClick = { showDashboard = true },
+        ) { Text("Open dashboard") }
         DiagnosticScreen(
             state = state,
             trace = trace,

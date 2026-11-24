@@ -130,6 +130,69 @@ class ElmDiagnosticSessionTest {
         assertEquals(ElmLogEvent.SESSION_END, events.last().first)
     }
 
+    @Test
+    fun followsAdvertisedPagesAndCapturesDashboardCandidates() = runBlocking {
+        val transport = ScriptedTransport { command ->
+            when (command) {
+                "0100" -> "41 00 00 18 00 01\r>"
+                "0120", "0140", "0160", "0180" ->
+                    "41 ${command.takeLast(2)} 00 00 00 01\r>"
+                "01A0" -> "41 A0 14 00 00 00\r>"
+                "01A4" -> "41 A4 01 00 00 00\r>"
+                "01A6" -> "41 A6 00 01 00 00\r>"
+                "010C" -> "41 0C 1C 9E\r>"
+                "010D" -> "41 0D 00\r>"
+                "ATDP" -> "AUTO, ISO 15765-4 (CAN 11/500)\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport)
+        try {
+            session.start("paired-device")
+            val live = withTimeout(2_000) {
+                session.state.filterIsInstance<DiagnosticState.Live>().first()
+            }
+            assertEquals(
+                listOf("0120", "0140", "0160", "0180", "01A0", "01A4", "01A6", "010C", "010D"),
+                transport.commands.takeLast(9),
+            )
+            assertTrue(session.trace.value.any { it.command == "01A4" && it.response != null })
+            assertTrue(session.trace.value.any { it.command == "01A6" && it.response != null })
+            assertEquals(null, live.gear)
+            assertEquals(SignalReading.Unavailable, live.odometerKm)
+        } finally {
+            session.stop()
+        }
+    }
+
+    @Test
+    fun publishesRpmBeforeASecondarySensorFinishes() = runBlocking {
+        var rpmRequests = 0
+        val transport = ScriptedTransport { command ->
+            when (command) {
+                "0100" -> "41 00 08 18 00 00\r>"
+                "010C" -> if (++rpmRequests == 1) "41 0C 10 00\r>" else "41 0C 20 00\r>"
+                "010D" -> "41 0D 00\r>"
+                "0105" -> awaitCancellation()
+                "ATDP" -> "ISO 15765-4\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport)
+        try {
+            session.start("paired-device")
+            val latest = withTimeout(2_000) {
+                session.state.filterIsInstance<DiagnosticState.Live>().first { state ->
+                    (state.engineRpm as? SignalReading.Sample)?.value == 2048.0
+                }
+            }
+            assertEquals(0.0, (latest.speedKmh as SignalReading.Sample).value, 0.0)
+            assertTrue(latest.telemetry.readings.isEmpty())
+        } finally {
+            session.stop()
+        }
+    }
+
     private fun initReply(command: String): String = when (command) {
         "ATZ", "ATI" -> "ELM327 v1.5\r>"
         "ATE0", "ATH0", "ATSP0" -> "OK\r>"

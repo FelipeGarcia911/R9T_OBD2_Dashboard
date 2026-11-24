@@ -41,7 +41,7 @@ private val GaugeOutline = Color(0xFF8A9E9B)
 internal fun RpmGauge(rpm: Double?, modifier: Modifier = Modifier) {
     val fill by animateFloatAsState(
         targetValue = ((rpm ?: 0.0) / 1_000).toFloat().coerceIn(0f, SCALE_END),
-        animationSpec = tween(durationMillis = 180),
+        animationSpec = tween(durationMillis = 90),
         label = "tachometer fill",
     )
     val labels = remember {
