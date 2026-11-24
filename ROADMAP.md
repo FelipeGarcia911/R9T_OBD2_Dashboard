@@ -19,6 +19,7 @@ The native Android app will display live data from the 2023 BMW R nineT Scramble
 
 - **Scope.** Define a small Kotlin application port for starting and stopping a session and observing typed session state. Model Bluetooth, adapter, and ECU progress separately. Represent RPM, speed in km/h, sample timestamps, unavailable values, and typed failures. Keep Android Bluetooth types, raw OBD-II frames, and localized messages outside the contract.
 - **Done when.** UI and data work can use the same contract, with agreed examples for valid zero, missing data, stale readings, and reconnect. Keep the contract and implementations in the existing app module.
+- **Contract examples.** Stationary speed is a timestamped sample of `0.0`. A supported signal without a current value is `Unavailable`. Disconnect and failure states carry no readings. Reconnect begins at `ConnectingBluetooth` and publishes fresh samples only after the session is live.
 
 ### UOW-01 · Confirm the reference setup
 
@@ -40,6 +41,7 @@ The native Android app will display live data from the 2023 BMW R nineT Scramble
 
 - **Scope.** Implement a pure Kotlin decoder for `4100`, `410C`, and `410D`. Return the supported PID flags, engine RPM, and speed in km/h.
 - **Done when.** Unit tests verify the support flags, exact values, valid zero, truncated or malformed frames, unrelated PIDs, and `NO DATA`. Missing or invalid values stay unavailable. The decoder has no Android dependencies.
+- **Implementation decision.** The decoder accepts headerless ELM327 output, so UOW-04 must configure that format. For repeated responses, it uses the first valid matching frame.
 
 ### UOW-04 · Run the read-only diagnostic session
 
