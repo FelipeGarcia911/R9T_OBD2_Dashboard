@@ -68,21 +68,35 @@ The native Android app will display live data from the 2023 BMW R nineT Scramble
 
 **Depends on:** UOW-00. Can run alongside UOW-05A and hardware work.
 
-- **Scope.** Build RPM and speed instruments in Compose using simulated values. Keep ranges, animation timing, and stale-data behavior open to adjustment using field results.
-- **Done when.** Previews cover live, zero, and unavailable readings, and a simulated stream exercises updates at different cadences.
+- **Scope.** Design an original landscape Compose dashboard with a sweeping tachometer, a prominent digital speedometer in km/h, a gear indicator, a local clock, and a total-distance readout in kilometers. Use simulated RPM, speed, gear, and distance. The clock uses the phone's local time.
+- **Done when.** All five indicators are visible and readable together in landscape. Previews cover live, zero, and unavailable values. The simulated stream exercises different RPM and speed cadences, gear changes, and a missing reading.
 
-### UOW-06 · Finalize the first dashboard
+### UOW-06 · Integrate the first dashboard
 
 **Depends on:** UOW-05, UOW-06A, and review of the field results.
 
-- **Scope.** Connect the instrument prototype to the existing session state and tune it to the observed update rates. Keep the diagnostic screen available for troubleshooting.
-- **Done when.** Both instruments are readable on the pilot phone and show valid zero, live readings, and unavailable data correctly. The dashboard recovers after reconnection. Additional sensors get their own units after review.
+- **Scope.** Connect RPM and speed to the existing session state and tune their presentation to the observed update rates. Keep the diagnostic screen available for troubleshooting. Show gear and total distance when their sources have been verified in UOW-07 and UOW-08 respectively.
+- **Done when.** The pilot phone shows live RPM, speed, and local time. Zero speed and unavailable readings are distinguishable, stale telemetry clears on disconnect, and fresh telemetry appears after reconnect.
+
+### UOW-07 · Verify and integrate gear position
+
+**Depends on:** UOW-05 and UOW-06A.
+
+- **Scope.** Check whether the reference motorcycle exposes a trustworthy gear signal, including neutral. Display a gear only when its source is verified.
+- **Done when.** A controlled comparison confirms the gear and neutral states, or the dashboard shows gear as unavailable and the investigation outcome is recorded. Any inferred gear feature requires its own validation plan.
+
+### UOW-08 · Verify and integrate total distance
+
+**Depends on:** UOW-05 and UOW-06A.
+
+- **Scope.** Check whether the reference motorcycle exposes an odometer reading. Verify its units against the motorcycle and display the verified value in kilometers.
+- **Done when.** The value agrees with the motorcycle's odometer, or total distance appears as unavailable and the investigation outcome is recorded.
 
 ### Delivery checkpoints
 
-- **Current status.** The project baseline is in place. UOW-00, UOW-01, and UOW-03 can start independently. Once UOW-00 closes, both UI units can start while hardware work continues.
+- **Current status.** UOW-00 and UOW-03 provide the session contract and tested decoder. UOW-05A has a debug demo with scripted telemetry and unit tests for the displayed rates. Device walkthrough and hardware validation remain pending. UOW-01 and UOW-06A can proceed independently.
 - **First functional release.** Close UOW-00 through UOW-05, including UOW-05A, with the diagnostic app verified on the target equipment.
-- **Dashboard release.** Close UOW-06 after reviewing the diagnostic results.
+- **Dashboard release.** Close UOW-06 after reviewing the diagnostic results. Track verified gear and odometer integration in UOW-07 and UOW-08.
 - **Close each unit.** Record its build, applicable test results, and field evidence in the repository. Review any proposed scope changes before adding them to a unit.
 
 Apply Clean Architecture's dependency rule by keeping the application port and models in Kotlin. The ViewModel depends on that port and maps its output to immutable UI state. Compose renders state and sends user actions to the ViewModel. The real OBD-II implementation and the debug fake both implement the same application port. The app entry point chooses the implementation. Within the real implementation, the ELM327 session uses a separate transport interface so RFCOMM or GATT details stay in the Bluetooth adapter. Test the protocol with a fake transport and the UI with a fake application port. End each *bolt* with a build, applicable tests, and a review of the evidence. [The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) · [Android UI layer](https://developer.android.com/topic/architecture/ui-layer)

@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 /** Application boundary shared by the live and simulated implementations. */
 interface DiagnosticSession {
     val state: StateFlow<DiagnosticState>
+    val trace: StateFlow<List<DiagnosticTraceEntry>>
 
     /** Starts a session for an opaque adapter ID. Connection progress is reported through state. */
     suspend fun start(adapterId: String)
@@ -22,11 +23,26 @@ sealed interface DiagnosticState {
         val protocol: String?,
         val engineRpm: SignalReading,
         val speedKmh: SignalReading,
+        val gear: GearPosition? = null,
+        val odometerKm: SignalReading = SignalReading.Unavailable,
     ) : DiagnosticState
 
     /** The failure stage records the last step attempted. Previous readings are discarded. */
     data class Failed(val stage: DiagnosticStage, val error: DiagnosticError) : DiagnosticState
 }
+
+sealed interface GearPosition {
+    data object Neutral : GearPosition
+    data class Forward(val number: Int) : GearPosition
+}
+
+data class DiagnosticTraceEntry(
+    val timestampMillis: Long,
+    val stage: DiagnosticStage,
+    val description: String,
+    val command: String? = null,
+    val response: String? = null,
+)
 
 enum class DiagnosticStage { BLUETOOTH, ADAPTER, ECU, POLLING }
 
