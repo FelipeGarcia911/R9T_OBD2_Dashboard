@@ -14,6 +14,7 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPids
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.appendCapped
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -128,12 +129,6 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
         response: String? = null,
     ) {
         val entry = DiagnosticTraceEntry(System.currentTimeMillis(), stage, description, command, response)
-        val entries = mutableTrace.value + entry
-        val oldestReading = entries.indexOfFirst { it.stage == DiagnosticStage.POLLING }
-        mutableTrace.value = if (entries.size > 120 && oldestReading >= 0) {
-            entries.toMutableList().apply { removeAt(oldestReading) }
-        } else {
-            entries.takeLast(120)
-        }
+        mutableTrace.value = mutableTrace.value.appendCapped(entry)
     }
 }
