@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ReplayDiagnosticSession
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticScreen
@@ -57,7 +58,8 @@ private fun SimulatedDiagnosticContent(modifier: Modifier, onShowLive: () -> Uni
     val state by model.uiState.collectAsStateWithLifecycle()
     val trace by model.trace.collectAsStateWithLifecycle()
     val dashboardLabel = stringResource(if (capture == null) R.string.debug_source_simulation else R.string.debug_source_capture_replay)
-    DiagnosticsOrDashboard(state.session, dashboardLabel, modifier) { openDashboard ->
+    val connection = DashboardConnection(connect = { model.connect(adapterId) }, disconnect = model::disconnect)
+    DiagnosticsOrDashboard(state.session, dashboardLabel, connection, modifier) { openDashboard ->
         Column(modifier) {
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),

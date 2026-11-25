@@ -2,6 +2,9 @@ package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -23,10 +26,14 @@ import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftLabelBox
 import androidx.compose.ui.res.stringResource
 import com.felipeg.r9t_obd2_dashboard.R
+import com.felipeg.r9t_obd2_dashboard.dashboard.link.LinkState
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.AdapterLinkLamp
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 
 /**
- * Controls shared by every display: the dashboard menu and one tab per display, styled as TFT
- * label boxes. DashboardScreen places it in the same spot for every display.
+ * Controls shared by every display: the dashboard menu, one tab per display and the adapter
+ * connection lamp, styled as TFT label boxes. DashboardScreen places it in the same spot for every
+ * display.
  */
 @Composable
 internal fun DashboardToolbar(
@@ -35,15 +42,19 @@ internal fun DashboardToolbar(
     sourceLabel: String,
     onDiagnostics: () -> Unit,
     onShiftLight: () -> Unit,
+    link: LinkState,
+    connection: DashboardConnection,
     modifier: Modifier = Modifier,
 ) {
+    // As tall as the tallest box, so the lamp lines up with the text boxes.
     Row(
-        modifier,
+        modifier.height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         DashboardMenu(sourceLabel, onDiagnostics, onShiftLight)
         DisplaySelector(selected, onSelect)
+        AdapterLinkLamp(link, connection, Modifier.fillMaxHeight())
     }
 }
 

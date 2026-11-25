@@ -3,6 +3,7 @@ package com.felipeg.r9t_obd2_dashboard.diagnostics.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.LastAdapterStore
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.PairedAdapter
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.PairedAdapterResult
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.PairedAdapterSource
@@ -35,9 +36,14 @@ internal interface ConnectPlatform {
 internal class AdapterConnectFlow(
     private val platform: ConnectPlatform,
     private val adapters: PairedAdapterSource,
+    private val lastAdapterStore: LastAdapterStore,
     private val onAdapterChosen: (adapterId: String) -> Unit,
 ) {
     var choices by mutableStateOf<List<PairedAdapter>>(emptyList())
+        private set
+
+    /** The adapter chosen last, which [reconnect] goes straight to. */
+    var lastAdapter by mutableStateOf(lastAdapterStore.load())
         private set
     var notice by mutableStateOf<ConnectNotice?>(null)
         private set
@@ -59,6 +65,20 @@ internal class AdapterConnectFlow(
         }
     }
 
+    /**
+     * Connects to [lastAdapter] in one step while it is still paired. Otherwise, or without the
+     * permission yet, it behaves like [connect] and lets the rider choose.
+     */
+    fun reconnect() {
+        val last = lastAdapter
+        if (last == null || !platform.hasPermission) return connect()
+        when (val result = adapters.pairedAdapters()) {
+            is PairedAdapterResult.Found ->
+                result.adapters.firstOrNull { it.id == last.id }?.let(::choose) ?: run { choices = result.adapters }
+            else -> notice = result.notice()
+        }
+    }
+
     fun onPermissionResult(granted: Boolean) {
         if (granted) {
             showAdapters()
@@ -70,6 +90,8 @@ internal class AdapterConnectFlow(
 
     fun choose(adapter: PairedAdapter) {
         choices = emptyList()
+        lastAdapter = adapter
+        lastAdapterStore.save(adapter)
         onAdapterChosen(adapter.id)
     }
 

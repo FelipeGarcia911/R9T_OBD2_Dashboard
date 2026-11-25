@@ -31,7 +31,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-private val ControlShape = RoundedCornerShape(3.dp)
+/** Corner of every TFT control box, so boxes drawn elsewhere match the label boxes. */
+internal val ControlShape = RoundedCornerShape(3.dp)
 
 /**
  * The TFT's outlined label box, as used for DTC and BRAKE. Active boxes have a cyan frame

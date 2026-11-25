@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.felipeg.r9t_obd2_dashboard.R
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.LastAdapterStore
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.PairedAdapterSource
 
 private const val CONNECT_PERMISSION = Manifest.permission.BLUETOOTH_CONNECT
@@ -53,10 +54,13 @@ private class ActivityConnectPlatform(private val activity: ComponentActivity) :
 internal fun rememberAdapterConnectFlow(
     activity: ComponentActivity,
     adapters: PairedAdapterSource,
+    lastAdapter: LastAdapterStore,
     onAdapterChosen: (adapterId: String) -> Unit,
 ): AdapterConnectFlow {
     val platform = remember(activity) { ActivityConnectPlatform(activity) }
-    val flow = remember(platform, adapters) { AdapterConnectFlow(platform, adapters, onAdapterChosen) }
+    val flow = remember(platform, adapters, lastAdapter) {
+        AdapterConnectFlow(platform, adapters, lastAdapter, onAdapterChosen)
+    }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         flow.onPermissionResult(granted)
     }

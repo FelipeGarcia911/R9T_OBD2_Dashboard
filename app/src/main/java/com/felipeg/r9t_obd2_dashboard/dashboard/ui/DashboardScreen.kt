@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight.ShiftLightSettingsStore
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.classic.ClassicDashboardPanel
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.shiftlight.ShiftLightOverlay
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.shiftlight.ShiftLightSettingsDialog
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.shiftlight.rememberShiftLightPhase
@@ -28,6 +29,7 @@ internal fun DashboardScreen(
     onDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
     sourceLabel: String,
+    connection: DashboardConnection,
     layoutStore: DashboardLayoutStore = rememberDashboardLayoutStore(),
     shiftLightStore: ShiftLightSettingsStore = rememberShiftLightSettingsStore(),
 ) {
@@ -53,6 +55,8 @@ internal fun DashboardScreen(
             sourceLabel = sourceLabel,
             onDiagnostics = onDiagnostics,
             onShiftLight = { editingShiftLight = true },
+            link = readings.link,
+            connection = connection,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = TOOLBAR_BOTTOM_INSET),
         )
         // Over every display and the toolbar, as the warning must win over everything else.

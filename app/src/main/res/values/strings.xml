@@ -114,6 +114,19 @@
     <string name="dashboard_status_reconnecting">Link lost · Reconnecting (%1$d)…</string>
     <string name="dashboard_status_failed">Session failed</string>
 
+    <!-- Adapter connection lamp -->
+    <string name="link_description">Adapter connection: %1$s</string>
+    <string name="link_connected">Connected</string>
+    <string name="link_connected_to">Connected · %1$s</string>
+    <string name="link_connecting">Connecting…</string>
+    <string name="link_reconnecting">Link lost · Reconnecting…</string>
+    <string name="link_failed">Connection failed</string>
+    <string name="link_disconnected">Not connected</string>
+    <string name="link_connect">Connect</string>
+    <string name="link_connect_to">Connect to %1$s</string>
+    <string name="link_choose_adapter">Choose adapter…</string>
+    <string name="link_disconnect">Disconnect</string>
+
     <!-- Shift light -->
     <string name="shift_light_title">Shift light</string>
     <string name="shift_light_on">On</string>

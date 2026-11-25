@@ -1,5 +1,7 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight
 
+import com.felipeg.r9t_obd2_dashboard.dashboard.Blink
+
 /**
  * The rider's shift light settings, modeled on BMW Motorrad's: on or off, the engine speed where
  * the light starts warning, the engine speed to shift at, and the flashing frequency there
@@ -86,6 +88,6 @@ internal object ShiftLightRules {
     fun isLit(phase: ShiftLightPhase, frequencyHz: Int, elapsedMillis: Long): Boolean = when (phase) {
         ShiftLightPhase.OFF -> false
         ShiftLightPhase.APPROACHING -> true
-        ShiftLightPhase.SHIFT -> frequencyHz == 0 || (elapsedMillis * frequencyHz * 2 / 1_000) % 2 == 0L
+        ShiftLightPhase.SHIFT -> Blink.isOn(frequencyHz, elapsedMillis)
     }
 }

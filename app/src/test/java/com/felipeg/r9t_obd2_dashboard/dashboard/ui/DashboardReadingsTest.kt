@@ -1,5 +1,6 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 
+import com.felipeg.r9t_obd2_dashboard.dashboard.link.LinkState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticError
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticStage
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
@@ -34,6 +35,7 @@ class DashboardReadingsTest {
                 odometerKm = 12_480.5,
                 vitals = EngineVitals(engineTemperatureC = 115.0),
                 status = null,
+                link = LinkState.CONNECTED,
             ),
             DashboardReadings.from(live),
         )
@@ -43,20 +45,26 @@ class DashboardReadingsTest {
     fun missingSignalsStayMissingInsteadOfZero() {
         val live = DiagnosticState.Live("CAN", SignalReading.Unavailable, SignalReading.Unavailable)
 
-        assertEquals(DashboardReadings(), DashboardReadings.from(live))
+        assertEquals(DashboardReadings(link = LinkState.CONNECTED), DashboardReadings.from(live))
     }
 
     @Test
     fun aSessionThatIsNotLiveShowsOnlyItsStatus() {
-        mapOf(
-            DiagnosticState.Disconnected to DashboardStatus.Disconnected,
-            DiagnosticState.ConnectingBluetooth to DashboardStatus.Connecting,
-            DiagnosticState.WaitingForAdapter to DashboardStatus.WaitingForAdapter,
-            DiagnosticState.WaitingForEcu to DashboardStatus.WaitingForEcu,
-            DiagnosticState.Reconnecting(2, DiagnosticError.CONNECTION_LOST) to DashboardStatus.Reconnecting(2),
-            DiagnosticState.Failed(DiagnosticStage.ECU, DiagnosticError.TIMEOUT) to DashboardStatus.Failed,
-        ).forEach { (state, status) ->
-            assertEquals(DashboardReadings(status = status), DashboardReadings.from(state))
+        listOf(
+            Triple(DiagnosticState.Disconnected, DashboardStatus.Disconnected, LinkState.DISCONNECTED),
+            Triple(DiagnosticState.ConnectingBluetooth, DashboardStatus.Connecting, LinkState.CONNECTING),
+            Triple(DiagnosticState.WaitingForAdapter, DashboardStatus.WaitingForAdapter, LinkState.CONNECTING),
+            Triple(DiagnosticState.WaitingForEcu, DashboardStatus.WaitingForEcu, LinkState.CONNECTING),
+            Triple(
+                DiagnosticState.Reconnecting(2, DiagnosticError.CONNECTION_LOST),
+                DashboardStatus.Reconnecting(2), LinkState.RECONNECTING,
+            ),
+            Triple(
+                DiagnosticState.Failed(DiagnosticStage.ECU, DiagnosticError.TIMEOUT),
+                DashboardStatus.Failed, LinkState.FAILED,
+            ),
+        ).forEach { (state, status, link) ->
+            assertEquals(DashboardReadings(status = status, link = link), DashboardReadings.from(state))
         }
     }
 }

@@ -8,6 +8,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardScreen
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 
 /**
@@ -18,6 +19,7 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 internal fun DiagnosticsOrDashboard(
     session: DiagnosticState,
     sourceLabel: String,
+    connection: DashboardConnection,
     modifier: Modifier,
     diagnostics: @Composable (openDashboard: () -> Unit) -> Unit,
 ) {
@@ -29,6 +31,7 @@ internal fun DiagnosticsOrDashboard(
             onDiagnostics = { showDashboard = false },
             modifier = modifier,
             sourceLabel = sourceLabel,
+            connection = connection,
         )
     } else {
         diagnostics { showDashboard = true }

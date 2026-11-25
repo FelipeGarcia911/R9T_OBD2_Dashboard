@@ -15,6 +15,7 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 - **Shift light.** From the start RPM the screen edges glow amber; from the shift RPM they flash red. Start RPM, shift RPM and flashing frequency are adjustable.
 - **Ride mode.** While the dashboard is open the screen stays on and the system bars hide away.
 - **RPM and speed come first.** The app asks for them as fast as the adapter answers and fits the slower readings in between, so the needle never waits for a temperature.
+- **Connection lamp.** Beside the display tabs, a connector glyph shows the adapter link at a glance: green and joined while the bike answers, flashing amber while connecting (faster when a link was lost), red when it failed. Tap it to reconnect to the last adapter in one touch, choose another, or disconnect.
 - **Recovers on its own.** If the Bluetooth link drops mid-ride, the dashboard says it is reconnecting and the app retries by itself until readings resume.
 - **Honest about what it knows.** A reading that has not arrived shows as `--`, never as a made-up zero. Gear and total distance only appear when the data source provides them.
 - **Built-in diagnostics.** A step-by-step view of the Bluetooth link, the adapter and the engine computer, with every command and reply logged and exportable.
@@ -47,7 +48,7 @@ You need an ELM327 adapter that speaks **Bluetooth Classic** (the common "ELM327
 
 1. Plug the adapter in, switch the ignition on and pair the adapter in Android's Bluetooth settings. Close any other OBD-II app that might be connected to it.
 2. Open the app, tap **Connect**, allow **Nearby devices** and choose the adapter.
-3. Wait for the session to reach *ECU responding*, then tap **Open dashboard**.
+3. Wait for the session to reach *ECU responding*, then tap **Open dashboard**. Next time you can open the dashboard straight away and tap the connection lamp: it reconnects to the same adapter.
 
 If something goes wrong, the diagnostics screen tells you which step failed: Bluetooth, the adapter, or the engine computer. *Unable to connect* or *no data* from the engine computer usually means the ignition is off.
 

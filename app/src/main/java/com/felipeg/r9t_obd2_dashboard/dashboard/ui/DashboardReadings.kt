@@ -1,5 +1,6 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 
+import com.felipeg.r9t_obd2_dashboard.dashboard.link.LinkState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
@@ -15,6 +16,7 @@ internal data class DashboardReadings(
     val odometerKm: Double? = null,
     val vitals: EngineVitals = EngineVitals.Unavailable,
     val status: DashboardStatus? = null,
+    val link: LinkState = LinkState.DISCONNECTED,
 ) {
     companion object {
         fun from(state: DiagnosticState): DashboardReadings = when (state) {
@@ -24,8 +26,9 @@ internal data class DashboardReadings(
                 gear = state.gear,
                 odometerKm = state.odometerKm.valueOrNull(),
                 vitals = EngineVitals.from(state.telemetry),
+                link = LinkState.CONNECTED,
             )
-            else -> DashboardReadings(status = state.dashboardStatus())
+            else -> DashboardReadings(status = state.dashboardStatus(), link = state.linkState())
         }
     }
 }
@@ -40,6 +43,15 @@ internal sealed interface DashboardStatus {
     data object WaitingForEcu : DashboardStatus
     data class Reconnecting(val attempt: Int) : DashboardStatus
     data object Failed : DashboardStatus
+}
+
+private fun DiagnosticState.linkState(): LinkState = when (this) {
+    DiagnosticState.Disconnected -> LinkState.DISCONNECTED
+    DiagnosticState.ConnectingBluetooth, DiagnosticState.WaitingForAdapter, DiagnosticState.WaitingForEcu ->
+        LinkState.CONNECTING
+    is DiagnosticState.Reconnecting -> LinkState.RECONNECTING
+    is DiagnosticState.Failed -> LinkState.FAILED
+    is DiagnosticState.Live -> LinkState.CONNECTED
 }
 
 /** Null while readings are live. */

@@ -9,7 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.AdapterConnectDialogs
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticScreen
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.ElmLogControls
@@ -26,9 +26,19 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
     val model = rememberDiagnosticViewModel(activity, "live-diagnostics", container::liveSession)
     val state by model.uiState.collectAsStateWithLifecycle()
     val trace by model.trace.collectAsStateWithLifecycle()
-    val connectFlow = rememberAdapterConnectFlow(activity, container.pairedAdapters, model::connect)
+    val connectFlow = rememberAdapterConnectFlow(
+        activity, container.pairedAdapters, container.lastAdapter, model::connect,
+    )
+    val connection = DashboardConnection(
+        connect = connectFlow::reconnect,
+        disconnect = model::disconnect,
+        chooseAdapter = connectFlow::connect,
+        adapterName = connectFlow.lastAdapter?.let { it.name ?: it.id },
+    )
 
-    DiagnosticsOrDashboard(state.session, stringResource(R.string.diagnostics_source_live), modifier) { openDashboard ->
+    DiagnosticsOrDashboard(
+        state.session, stringResource(R.string.diagnostics_source_live), connection, modifier,
+    ) { openDashboard ->
         Column(modifier) {
             ElmLogControls(container.logSettings, container.sessionLogs)
             if (onShowDemo != null) {
@@ -37,10 +47,8 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
                     onShowDemo()
                 }) { Text(stringResource(R.string.show_simulation)) }
             }
-            OutlinedButton(
-                enabled = state.session is DiagnosticState.Live,
-                onClick = openDashboard,
-            ) { Text(stringResource(R.string.open_dashboard)) }
+            // Always available: the dashboard's connection lamp can start the session too.
+            OutlinedButton(onClick = openDashboard) { Text(stringResource(R.string.open_dashboard)) }
             DiagnosticScreen(
                 state = state,
                 trace = trace,
@@ -48,6 +56,7 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
                 onDisconnect = model::disconnect,
             )
         }
-        AdapterConnectDialogs(connectFlow)
     }
+    // Over diagnostics and the dashboard alike, as both can start a connection.
+    AdapterConnectDialogs(connectFlow)
 }
