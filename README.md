@@ -11,10 +11,12 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 ## Highlights
 
 - **Two displays, one tap apart.** *Sport* is a round tachometer with the speed in its center; *Classic* is a bar tachometer that climbs the left edge and runs across the top. Switch between them from the bottom of the screen; the app remembers your choice.
-- **Engine vitals at a glance.** Engine and oil temperature, battery voltage and intake air temperature, read from the bike every few seconds.
+- **Engine vitals at a glance.** Engine and oil temperature, battery voltage and intake air temperature, refreshed about every 10 seconds; they change slowly, so RPM and speed keep the bus.
 - **Shift light.** From the start RPM the screen edges glow amber; from the shift RPM they flash red. Start RPM, shift RPM and flashing frequency are adjustable.
 - **Ride mode.** While the dashboard is open the screen stays on and the system bars hide away.
-- **RPM and speed come first.** The app asks for them as fast as the adapter answers and fits the slower readings in between, so the needle never waits for a temperature.
+- **RPM and speed come first.** About 15 readings a second on the reference bike, asked for together in one request; slower readings are fitted in between, so the needle never waits for a temperature.
+- **Smooth drawing.** Each display keeps its scale, ticks and numerals in a cached GPU layer and redraws only the needle or lit segments, at a steady 60 Hz.
+- **Safe by design.** The app only ever sends read requests, checked against an allowlist before anything leaves the phone, and stops asking as soon as the ignition goes off.
 - **Connection lamp.** Beside the display tabs, a connector glyph shows the adapter link at a glance: green and joined while the bike answers, flashing amber while connecting (faster when a link was lost), red when it failed. Tap it to reconnect to the last adapter in one touch, choose another, or disconnect.
 - **Recovers on its own.** If the Bluetooth link drops mid-ride, the dashboard says it is reconnecting and the app retries by itself until readings resume.
 - **Honest about what it knows.** A reading that has not arrived shows as `--`, never as a made-up zero. Gear and total distance only appear when the data source provides them.
@@ -52,7 +54,11 @@ You need an ELM327 adapter that speaks **Bluetooth Classic** (the common "ELM327
 
 If something goes wrong, the diagnostics screen tells you which step failed: Bluetooth, the adapter, or the engine computer. *Unable to connect* or *no data* from the engine computer usually means the ignition is off.
 
-**Session logs.** Every connection is recorded privately on the phone. Use **Session logs** to export one as a JSON Lines file, for troubleshooting or to replay it in the debug build. Logging can be turned off in **Settings**.
+When you switch the ignition off, the session notices within two seconds, stops sending requests and shows the failure; tap the connection lamp to reconnect after the next start.
+
+**Park with the adapter unplugged.** The diagnostic socket stays powered with the ignition off, so a plugged-in adapter keeps drawing from the battery even when the app is closed. Unplug it if the bike will stand for more than a day or two. Every session log records the battery voltage the adapter sees (`ATRV`).
+
+**Session logs.** Every connection is recorded privately on the phone. Use **Session logs** to export one as a JSON Lines file, for troubleshooting or to replay it in the debug build. Logging can be turned off in **Settings**. The log is written in the background, so requests no longer wait for it.
 
 ## How it works
 
@@ -60,20 +66,29 @@ The app talks to the adapter over a direct Bluetooth serial (RFCOMM) link and us
 
 | Reading | Request | Refresh |
 | --- | --- | --- |
-| Engine RPM and vehicle speed | `010C0D` (both in one exchange) | Every cycle, as fast as the adapter answers |
-| Engine and oil temperature, battery voltage, intake air | `0105`, `015C`, `0142`, `010F` | One reading per second, in rotation |
+| Engine RPM and vehicle speed | `010C0D1` (both in one exchange, single reply) | Every cycle, as fast as the adapter answers |
+| Engine and oil temperature, battery voltage, intake air | `0105`, `015C`, `0142`, `010F` | One reading every 2 s, in rotation: each about every 10 s |
 | Other advertised sensors | See the [telemetry inventory](docs/OBD_TELEMETRY.md) | One slot in four |
 
-On the reference bike (ISO 15765-4 CAN, 11-bit, 500 kbit/s) each exchange takes about 75 ms. Asking for RPM and speed together halves the requests needed for the two readings that matter most while riding.
+On the reference bike (ISO 15765-4 CAN, 11-bit, 500 kbit/s) each exchange takes about 55 ms, which gives about 15 RPM and speed readings a second; the day before, asking for them separately, it was 6.4 and 2.4. Asking for both in one request, and telling the adapter to expect a single reply, did most of that. The measurements are in [the field test notes](docs/FIELD_TEST_2026-11-25.md).
+
+### Safety
+
+Polling standard OBD-II data cannot harm the engine computer: the requests only read values the ECU must provide, one at a time, using under 1 % of the bus. To keep it that way:
+
+- **Read requests only.** An allowlist lets through the adapter's own `AT` settings and Mode 01 "current data" requests, nothing else. Clearing trouble codes, test control, diagnostic sessions, security access, writes or programming cannot be sent, even by mistake.
+- **No traffic to a sleeping bike.** Two seconds without RPM or speed end the session, and it does not retry, so requests never keep the bike's control units awake.
+
+[Connection options and safety](docs/CONNECTION_OPTIONS.md) covers the reasoning, the faster alternatives (listening to the CAN bus, STN-based adapters) and their trade-offs.
 
 The code follows Clean Architecture, with pure Kotlin logic kept apart from Android so it can be unit tested:
 
 | Package | What lives there |
 | --- | --- |
 | `diagnostics/application` | The session contract shared by the live, simulated and replay sources: states, readings and errors |
-| `diagnostics/data` | The ELM327 session, split into handshake, polling loop, polling schedule and reconnect policy; the Bluetooth transport; PID decoding; session logs |
+| `diagnostics/data` | The ELM327 session, split into handshake, polling loop, polling schedule, reconnect policy and the command allowlist; the Bluetooth transport; PID decoding; session logs |
 | `diagnostics/ui` | Diagnostics screen and its ViewModel |
-| `dashboard` | The Sport and Classic displays, their pure geometry, the shift light and the shared TFT styling |
+| `dashboard` | The Sport and Classic displays as `GaugeStyle` strategies drawn in layers by `LayeredGauge`, their pure geometry, the connection lamp, the shift light and the shared TFT styling |
 | `src/debug` | The simulator, the capture player and the demo entry point |
 
 Built with Kotlin, Jetpack Compose, Material 3, coroutines and AndroidX ViewModel.
@@ -82,15 +97,19 @@ Built with Kotlin, Jetpack Compose, Material 3, coroutines and AndroidX ViewMode
 
 ```sh
 ./gradlew :app:testDebugUnitTest          # JVM unit tests
-./gradlew :app:connectedDebugAndroidTest  # capture replay, on a device or emulator
+./gradlew :app:connectedDebugAndroidTest  # instrumented tests, on an emulator
 ```
 
-Unit tests cover PID decoding, the polling schedule and its priority rules, reconnection, the session log format and the display geometry. A scripted ELM327 adapter lets them run a complete session, including timeouts, dropped links and incomplete replies, without hardware.
+Unit tests cover PID decoding, the polling schedule and its priority rules, reconnection, the command allowlist, the ignition-off stop, the session log format and the display geometry. A scripted ELM327 adapter lets them run a complete session, including timeouts, dropped links and incomplete replies, without hardware. Instrumented tests check capture replay and that the displays redraw only their moving layer.
+
+Two benchmarks measure a real phone: `DashboardFrameBenchmark` (drawing only) and `DashboardPipelineBenchmark` (session, view model and dashboard over a fake adapter, with logging on and off). On your own phone, install the app and test APKs and run them with `adb shell am instrument`, as described in the field test notes: `connectedAndroidTest` uninstalls the app afterwards, and its session logs with it.
 
 ## Roadmap
 
-- Validate RPM and speed refresh rates with a riding capture, now that both are read in one request.
-- Estimate the gear from the RPM to speed ratio, or find a read-only source for it on the bike's CAN bus.
+- Measure the latest connection changes on the bike: readings per second with logging on and off, and the ignition-off stop.
+- Try a short, supervised listen on the CAN bus to see whether RPM, speed and gear are broadcast at the diagnostic socket.
+- Fix the release build's R8 configuration, which crashes at startup (the `profile` build type is the stopgap).
+- Estimate the gear from the RPM to speed ratio with a riding capture, or read it from the CAN bus.
 - Find a reliable source for total distance.
 
 The full plan, with acceptance criteria for each step, is in [ROADMAP.md](ROADMAP.md).
