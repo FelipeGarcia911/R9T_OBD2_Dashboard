@@ -3,6 +3,7 @@ package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 import android.app.UiAutomation
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.test.core.app.ActivityScenario
@@ -36,16 +37,39 @@ internal fun runDashboard(
     onActivity: (ComponentActivity) -> Unit = {},
     onTick: (elapsedMillis: Long) -> Unit = {},
 ) {
+    val session = mutableStateOf<DiagnosticState>(DiagnosticState.Disconnected)
+    showDashboard(layout, probe, onActivity, state = { session.value }) { scenario ->
+        val startedAt = System.nanoTime()
+        while (true) {
+            val elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000
+            if (elapsedMillis >= durationMillis) break
+            onTick(elapsedMillis)
+            scenario.onActivity { session.value = ride(elapsedMillis) }
+            Thread.sleep(READING_PERIOD_MILLIS)
+        }
+    }
+}
+
+/**
+ * Shows [layout] full screen in landscape with real frames, reading its session from [state],
+ * runs [drive] while it is shown, then closes it.
+ */
+internal fun showDashboard(
+    layout: DashboardLayout,
+    probe: RenderProbe = RenderProbe { },
+    onActivity: (ComponentActivity) -> Unit = {},
+    state: @Composable () -> DiagnosticState,
+    drive: (ActivityScenario<ComponentActivity>) -> Unit,
+) {
     val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
     automation.setRotation(UiAutomation.ROTATION_FREEZE_90)
     try {
-        val session = mutableStateOf<DiagnosticState>(DiagnosticState.Disconnected)
         ActivityScenario.launch(ComponentActivity::class.java).use { scenario ->
             scenario.onActivity { activity ->
                 activity.setContent {
                     CompositionLocalProvider(LocalRenderProbe provides probe) {
                         DashboardScreen(
-                            state = session.value,
+                            state = state(),
                             onDiagnostics = {},
                             sourceLabel = "Test",
                             connection = DashboardConnection(connect = {}, disconnect = {}),
@@ -56,14 +80,7 @@ internal fun runDashboard(
                 }
                 onActivity(activity)
             }
-            val startedAt = System.nanoTime()
-            while (true) {
-                val elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000
-                if (elapsedMillis >= durationMillis) break
-                onTick(elapsedMillis)
-                scenario.onActivity { session.value = ride(elapsedMillis) }
-                Thread.sleep(READING_PERIOD_MILLIS)
-            }
+            drive(scenario)
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         }
     } finally {

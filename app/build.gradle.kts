@@ -19,6 +19,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Instrumented tests run against debug unless asked otherwise, e.g. -PtestBuildType=profile to
+    // benchmark the optimized build on a device.
+    testBuildType = (project.findProperty("testBuildType") as String?) ?: "debug"
+
     buildTypes {
         release {
             optimization {
@@ -66,5 +70,6 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    "profileImplementation"(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

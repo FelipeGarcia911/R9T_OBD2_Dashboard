@@ -51,7 +51,41 @@ whole number changes; the frame's ground is cached; the dashboard asks for 60 Hz
 StiffnessMedium. `DashboardLayersTest` guards the layering and `DashboardFrameBenchmark` measures
 frames (`adb logcat -d -s DashboardBench`). On a G30-like emulator (720×1600, host GPU, 4 cores),
 before → after: UI thread per frame p50 14–22 ms → 4–8 ms, 29–52 fps → 46–59 fps. The render
-thread (~11–15 ms) is unchanged and is the next lever. Still to measure on the phone itself.
+thread (~11–15 ms) is unchanged and is the next lever.
+
+On the Moto G30 itself (old and new code alternated, `am instrument` so the app keeps its data):
+
+| Build | Display | Before | After |
+| --- | --- | --- | --- |
+| debug | Sport | 45 fps, frame p50 50 ms | 48 fps, 31 ms |
+| debug | Classic | 31–42 fps, 48–60 ms | 55–57 fps, 25–26 ms |
+| optimized (profile) | Sport | 92 fps, UI thread 6.6 ms | 58–59 fps (60 Hz cap), UI 9.1–9.5 ms |
+| optimized (profile) | Classic | 90–92 fps, UI 7.1 ms | 59–60 fps (60 Hz cap), UI 8.3–8.5 ms |
+
+So in the optimized build drawing was never the bottleneck: the old code already reaches ~92 fps
+with simulated readings. The layering matters most in the debug build. UI-thread time is not
+comparable across 90 and 60 Hz (the CPU clocks down at the lower rate). Revisit the 60 Hz cap: the
+phone's render thread needs only 3–5 ms here.
+
+`DashboardPipelineBenchmark` runs the whole live pipeline (real session, view model and dashboard
+over a fake adapter answering in 55 ms) on the phone, optimized build:
+
+| Detailed log | fps | UI thread p50 | RPM/speed readings |
+| --- | --- | --- | --- |
+| on | 57.6–58.1 | 8.4–9.4 ms | 13.8–14.6 /s |
+| off | 57.8 | 9.9 ms | 15.5 /s |
+
+Logging does not slow the drawing, but it costs ~6–11 % of the data rate: each command waits for
+its line to be written (the file is opened and closed per line) before it is sent. Write the log
+in the background with a buffer instead. Since the pipeline renders at ~58 fps, the ~16 fps seen
+on the bike points to the real Bluetooth transport or the phone's state at the time (heat, power
+saving, USB): measure on the bike again with this build.
+
+Benchmarks: `adb shell am instrument -w -e class com.felipeg.r9t_obd2_dashboard.dashboard.ui.<Benchmark>
+com.felipeg.r9t_obd2_dashboard.test/androidx.test.runner.AndroidJUnitRunner` after installing the
+app and test APKs (`-PtestBuildType=profile` for the optimized build), then `adb logcat -d -s
+DashboardBench DashboardPipeline`. Avoid `connectedAndroidTest` on the phone: it uninstalls the
+app and its logs.
 
 ## Release build crashes at startup
 
