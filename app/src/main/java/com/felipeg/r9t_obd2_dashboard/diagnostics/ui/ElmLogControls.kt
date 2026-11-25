@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmSessionLogs
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.SessionLogFile
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
@@ -49,7 +50,7 @@ internal fun ElmLogControls(settings: ElmLogSettings, logs: ElmSessionLogs) {
     val scope = rememberCoroutineScope()
     var enabled by remember(settings) { mutableStateOf(settings.detailedLogging) }
     var showSettings by remember { mutableStateOf(false) }
-    var files by remember { mutableStateOf<List<String>?>(null) }
+    var files by remember { mutableStateOf<List<SessionLogFile>?>(null) }
     var exportName by rememberSaveable { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
@@ -107,12 +108,12 @@ internal fun ElmLogControls(settings: ElmLogSettings, logs: ElmSessionLogs) {
             text = {
                 Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
                     if (saved.isEmpty()) Text("No saved sessions.")
-                    saved.forEach { name ->
+                    saved.forEach { log ->
                         TextButton(onClick = {
-                            exportName = name
+                            exportName = log.name
                             files = null
-                            export.launch(name)
-                        }) { Text(sessionLabel(name)) }
+                            export.launch(log.name)
+                        }) { Text(log.label()) }
                     }
                 }
             },
@@ -129,8 +130,9 @@ internal fun ElmLogControls(settings: ElmLogSettings, logs: ElmSessionLogs) {
     }
 }
 
-private fun sessionLabel(name: String): String {
-    val time = name.removePrefix("elm327-").substringBefore('-').toLongOrNull() ?: return name
+/** The session's start time in the phone's locale, or the file name when it has none. */
+private fun SessionLogFile.label(): String {
+    val time = startedAtMillis ?: return name
     return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
         .format(Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()))
 }

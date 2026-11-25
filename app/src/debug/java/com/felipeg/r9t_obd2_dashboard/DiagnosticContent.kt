@@ -21,14 +21,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.unit.dp
-import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.ReplayDiagnosticSession
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ReplayDiagnosticSession
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardScreen
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.flowWithLifecycle
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticScreen
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticViewModel
-import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.SimulatedDiagnosticSession
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.SimulatedDiagnosticSession
 
 @Composable
 internal fun DiagnosticContent(modifier: Modifier) {

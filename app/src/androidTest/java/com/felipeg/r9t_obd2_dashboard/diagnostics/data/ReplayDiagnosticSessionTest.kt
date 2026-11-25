@@ -1,4 +1,4 @@
-package com.felipeg.r9t_obd2_dashboard.diagnostics.ui
+package com.felipeg.r9t_obd2_dashboard.diagnostics.data
 
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -8,8 +8,6 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticStage
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
-import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmLogEvent
-import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmSessionLogs
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay

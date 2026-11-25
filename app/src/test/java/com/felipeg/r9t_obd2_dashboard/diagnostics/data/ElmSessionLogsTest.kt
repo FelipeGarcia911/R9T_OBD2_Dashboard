@@ -65,13 +65,21 @@ class ElmSessionLogsTest {
         File(directory, "elm327-2000-b.jsonl").writeText("{}\n")
         File(directory, "elm327-3000-c.jsonl").createNewFile()
         File(directory, "notes.txt").writeText("not a log")
+        File(directory, "renamed.jsonl").writeText("{}\n")
 
-        assertEquals(listOf("elm327-2000-b.jsonl", "elm327-1000-a.jsonl"), ElmSessionLogs(directory).list())
+        assertEquals(
+            listOf(
+                SessionLogFile("renamed.jsonl", startedAtMillis = null),
+                SessionLogFile("elm327-2000-b.jsonl", startedAtMillis = 2_000),
+                SessionLogFile("elm327-1000-a.jsonl", startedAtMillis = 1_000),
+            ),
+            ElmSessionLogs(directory).list(),
+        )
     }
 
     @Test
     fun listIsEmptyBeforeTheFirstSession() = runBlocking {
-        assertEquals(emptyList<String>(), ElmSessionLogs(File(folder.root, "missing")).list())
+        assertEquals(emptyList<SessionLogFile>(), ElmSessionLogs(File(folder.root, "missing")).list())
     }
 
     @Test

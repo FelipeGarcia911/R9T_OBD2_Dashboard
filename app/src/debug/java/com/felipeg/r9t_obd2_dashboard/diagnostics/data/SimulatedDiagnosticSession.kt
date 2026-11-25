@@ -1,4 +1,4 @@
-package com.felipeg.r9t_obd2_dashboard.diagnostics.ui
+package com.felipeg.r9t_obd2_dashboard.diagnostics.data
 
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.EngineVitalPids
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.TelemetryMeasurement
@@ -13,8 +13,6 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
-import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPids
-import com.felipeg.r9t_obd2_dashboard.diagnostics.data.appendCapped
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
