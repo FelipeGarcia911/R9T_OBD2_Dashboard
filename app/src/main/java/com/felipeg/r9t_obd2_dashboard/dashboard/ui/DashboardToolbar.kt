@@ -32,6 +32,7 @@ internal fun DashboardToolbar(
     onSelect: (DashboardLayout) -> Unit,
     sourceLabel: String,
     onDiagnostics: () -> Unit,
+    onShiftLight: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -39,7 +40,7 @@ internal fun DashboardToolbar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        DashboardMenu(sourceLabel, onDiagnostics)
+        DashboardMenu(sourceLabel, onDiagnostics, onShiftLight)
         DisplaySelector(selected, onSelect)
     }
 }
@@ -71,7 +72,7 @@ internal fun DisplaySelector(
 }
 
 @Composable
-private fun DashboardMenu(sourceLabel: String, onDiagnostics: () -> Unit) {
+private fun DashboardMenu(sourceLabel: String, onDiagnostics: () -> Unit, onShiftLight: () -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         TftLabelBox(
@@ -84,6 +85,10 @@ private fun DashboardMenu(sourceLabel: String, onDiagnostics: () -> Unit) {
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(text = { Text(sourceLabel) }, onClick = {}, enabled = false)
+            DropdownMenuItem(text = { Text("Shift light") }, onClick = {
+                expanded = false
+                onShiftLight()
+            })
             DropdownMenuItem(text = { Text("Diagnostics") }, onClick = {
                 expanded = false
                 onDiagnostics()
