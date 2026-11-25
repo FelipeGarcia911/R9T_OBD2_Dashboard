@@ -326,32 +326,4 @@ class ElmDiagnosticSessionTest {
             session.stop()
         }
     }
-
-    private fun initReply(command: String): String = when (command) {
-        "ATZ", "ATI" -> "ELM327 v1.5\r>"
-        "ATE0", "ATH0", "ATSPA6", "ATSP0" -> "OK\r>"
-        else -> error("Unexpected command: $command")
-    }
-
-    private class ScriptedTransport(
-        private var partialResponse: String? = null,
-        private val onOpen: (attempt: Int) -> Unit = {},
-        private val reply: suspend (String) -> String,
-    ) : ElmTransport {
-        override fun takePartialResponse(): String? = partialResponse.also { partialResponse = null }
-        val commands = mutableListOf<String>()
-        var closed = false
-        var opens = 0
-        override suspend fun open(adapterId: String) {
-            closed = false
-            onOpen(++opens)
-        }
-        override suspend fun exchange(command: String): String {
-            commands += command
-            return reply(command)
-        }
-        override fun close() {
-            closed = true
-        }
-    }
 }

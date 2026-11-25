@@ -47,6 +47,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    // android.jar only ships org.json stubs to JVM tests; session logs need the real parser.
+    testImplementation(libs.org.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
