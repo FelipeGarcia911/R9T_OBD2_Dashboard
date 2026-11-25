@@ -37,10 +37,12 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.TelemetryStatus
 import kotlin.math.roundToInt
 
 /**
- * Temperature scale for the side gauges. The reference bike idled at 113–124 °C engine and
- * 96–105 °C oil; the red bars are a visual cue, not the manufacturer's warning threshold.
+ * Temperature scale for the side gauges: 10 °C per row, so the long markers every fourth row
+ * read 140, 100 and 60, with the unit on the bottom row. The reference bike idled at 113–124 °C
+ * engine and 96–105 °C oil; the red row is a visual cue, not the manufacturer's threshold.
  */
-private val TemperatureRange = TftGaugeRange(min = 40.0, max = 140.0, warnFrom = 130.0, bars = 12)
+private val TemperatureRange = TftGaugeRange(min = 20.0, max = 140.0, warnFrom = 130.0, bars = 12, majorEvery = 4)
+private const val TEMPERATURE_UNIT = "°C"
 private val GaugeBarsHeight = 84.dp
 private val MaxGaugeWidth = 132.dp
 private val MinGaugeWidth = 72.dp
@@ -96,6 +98,7 @@ private fun BoxScope.SideGauges(vitals: EngineVitals, layout: SportDialLayout) {
         valueText = VitalsFormat.temperature(vitals.engineTemperatureC),
         range = TemperatureRange,
         scaleOnStart = true,
+        unit = TEMPERATURE_UNIT,
         modifier = Modifier.align(Alignment.CenterStart).padding(start = TftBars.SideMargin).width(gaugeWidth),
         barsHeight = GaugeBarsHeight,
     )
@@ -105,6 +108,7 @@ private fun BoxScope.SideGauges(vitals: EngineVitals, layout: SportDialLayout) {
         valueText = VitalsFormat.temperature(vitals.oilTemperatureC),
         range = TemperatureRange,
         scaleOnStart = false,
+        unit = TEMPERATURE_UNIT,
         modifier = Modifier.align(Alignment.CenterEnd).padding(end = TftBars.SideMargin).width(gaugeWidth),
         barsHeight = GaugeBarsHeight,
     )

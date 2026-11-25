@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import kotlin.math.roundToInt
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -56,10 +60,20 @@ internal fun TftLabelBox(
     }
 }
 
-/** Visual range of a [TftBarGauge]. Bars from [warnFrom] upward turn red when lit. */
-internal data class TftGaugeRange(val min: Double, val max: Double, val warnFrom: Double, val bars: Int = 10) {
+/**
+ * Visual range of a [TftBarGauge]. Bars from [warnFrom] upward turn red when lit. Counting rows
+ * from the top, every [majorEvery]th row is a major row with a long marker and a scale label;
+ * the bottom row is major too and carries the unit, as on the original bar graphs.
+ */
+internal data class TftGaugeRange(
+    val min: Double,
+    val max: Double,
+    val warnFrom: Double,
+    val bars: Int = 10,
+    val majorEvery: Int = 2,
+) {
     init {
-        require(max > min && bars > 1)
+        require(max > min && bars > 1 && majorEvery > 0)
     }
 
     /** How many bars a value lights, clamped to the gauge. Null lights none. */
@@ -68,22 +82,47 @@ internal data class TftGaugeRange(val min: Double, val max: Double, val warnFrom
 
     /** Bar indices from the bottom, 0 based, that sit in the warning zone. */
     fun isWarning(bar: Int): Boolean = min + (max - min) * (bar + 1) / bars > warnFrom
+
+    /** Whether [bar], counted from the bottom, gets a long marker. */
+    fun isMajor(bar: Int): Boolean = bar == 0 || (bars - 1 - bar) % majorEvery == 0
+
+    /**
+     * The scale label beside [bar]: the value at the top of a major row, [unit] on the bottom
+     * row, nothing beside minor rows.
+     */
+    fun scaleLabel(bar: Int, unit: String): String? = when {
+        bar == 0 -> unit
+        isMajor(bar) -> (min + (max - min) * (bar + 1) / bars).roundToInt().toString()
+        else -> null
+    }
 }
 
 /**
- * The stepped outline of the TFT bar graph. Each row has a short marker next to the scale and a
- * long bar whose free end steps inward from the top row to the bottom row.
+ * The stepped outline of the TFT bar graph. Each row has a marker next to the scale and a long
+ * bar whose free end steps inward from the top row to the bottom row. Markers of major rows
+ * reach further toward the scale; all markers line up on the long bar's side.
  */
 internal object TftStepProfile {
     /** The bottom row's long bar, as a share of the top row's. */
     const val SHORTEST = .62f
 
-    /** Share of the gauge width taken by the short marker column. */
-    const val MARKER_SHARE = .18f
+    /** Share of the gauge width taken by the marker column, which a major marker fills. */
+    const val MARKER_SHARE = .2f
+
+    /** A minor row's marker, as a share of a major row's. */
+    const val MINOR_MARKER = .6f
 
     /** Length of [bar]'s long bar, from 0 (bottom) to [bars] - 1 (top), as a share of the longest. */
     fun longBarShare(bar: Int, bars: Int): Float = SHORTEST + (1 - SHORTEST) * bar / (bars - 1)
+
+    /** Top of [bar], counted from the bottom, in a column of [height] with [gap] between rows. */
+    fun rowTop(bar: Int, bars: Int, height: Float, gap: Float): Float =
+        height - (bar + 1) * rowHeight(bars, height, gap) - bar * gap
+
+    fun rowHeight(bars: Int, height: Float, gap: Float): Float = (height - gap * (bars - 1)) / bars
 }
+
+private val RowGap = 2.dp
 
 /**
  * The TFT's stacked-bar indicator: a label box, horizontal bars lit from the bottom, scale
@@ -97,6 +136,7 @@ internal fun TftBarGauge(
     valueText: String,
     range: TftGaugeRange,
     scaleOnStart: Boolean,
+    unit: String,
     modifier: Modifier = Modifier,
     barsHeight: Dp = 96.dp,
 ) {
@@ -107,12 +147,12 @@ internal fun TftBarGauge(
     ) {
         TftLabelBox(label, active = value != null, Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth().height(barsHeight), verticalAlignment = Alignment.CenterVertically) {
-            if (scaleOnStart) GaugeScale(range, TextAlign.End)
+            if (scaleOnStart) GaugeScale(range, unit, TextAlign.End)
             SteppedBars(
                 range, range.litBars(value), anchorAtStart = scaleOnStart,
                 modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 6.dp),
             )
-            if (!scaleOnStart) GaugeScale(range, TextAlign.Start)
+            if (!scaleOnStart) GaugeScale(range, unit, TextAlign.Start)
         }
         Text(
             valueText,
@@ -129,18 +169,20 @@ internal fun TftBarGauge(
 @Composable
 private fun SteppedBars(range: TftGaugeRange, lit: Int, anchorAtStart: Boolean, modifier: Modifier) {
     Canvas(modifier) {
-        val rowGap = 2.dp.toPx()
+        val rowGap = RowGap.toPx()
         val columnGap = 4.dp.toPx()
-        val rowHeight = (size.height - rowGap * (range.bars - 1)) / range.bars
-        val marker = size.width * TftStepProfile.MARKER_SHARE
-        val longest = size.width - marker - columnGap
+        val rowHeight = TftStepProfile.rowHeight(range.bars, size.height, rowGap)
+        val column = size.width * TftStepProfile.MARKER_SHARE
+        val longest = size.width - column - columnGap
         for (bar in 0 until range.bars) {
-            val top = size.height - (bar + 1) * rowHeight - bar * rowGap
+            val top = TftStepProfile.rowTop(bar, range.bars, size.height, rowGap)
             val color = barColor(lit = bar < lit, warning = range.isWarning(bar))
             val long = longest * TftStepProfile.longBarShare(bar, range.bars)
-            // Lay the row out from the anchor: marker, gap, then the long bar.
-            val markerX = if (anchorAtStart) 0f else size.width - marker
-            val longX = if (anchorAtStart) marker + columnGap else size.width - marker - columnGap - long
+            val marker = column * if (range.isMajor(bar)) 1f else TftStepProfile.MINOR_MARKER
+            // Lay the row out from the anchor: marker column, gap, then the long bar. Markers
+            // line up on the long bar's side, so a major one reaches further toward the scale.
+            val markerX = if (anchorAtStart) column - marker else size.width - column
+            val longX = if (anchorAtStart) column + columnGap else size.width - column - columnGap - long
             drawRect(color, Offset(markerX, top), Size(marker, rowHeight))
             drawRect(color, Offset(longX, top), Size(long, rowHeight))
         }
@@ -154,21 +196,30 @@ private fun barColor(lit: Boolean, warning: Boolean): Color = when {
     else -> TftColors.BarDim
 }
 
+/** Labels centered on the rows they name, so each sits level with its long marker. */
 @Composable
-private fun GaugeScale(range: TftGaugeRange, align: TextAlign) {
+private fun GaugeScale(range: TftGaugeRange, unit: String, align: TextAlign) {
     val style = TftTypography.style(11.dp, FontWeight.Medium, italic = false)
-    Column(
-        Modifier.width(30.dp).fillMaxHeight(),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        listOf(range.max, (range.min + range.max) / 2, range.min).forEach { mark ->
-            Text(
-                mark.toInt().toString(),
-                color = TftColors.Label,
-                style = style,
-                textAlign = align,
-                modifier = Modifier.fillMaxWidth(),
-            )
+    BoxWithConstraints(Modifier.width(30.dp).fillMaxHeight()) {
+        val height = maxHeight.value
+        val rowHeight = TftStepProfile.rowHeight(range.bars, height, RowGap.value).dp
+        for (bar in 0 until range.bars) {
+            val label = range.scaleLabel(bar, unit) ?: continue
+            Box(
+                Modifier.offset(y = TftStepProfile.rowTop(bar, range.bars, height, RowGap.value).dp)
+                    .height(rowHeight)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label,
+                    color = TftColors.Label,
+                    style = style,
+                    textAlign = align,
+                    maxLines = 1,
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight(unbounded = true),
+                )
+            }
         }
     }
 }
