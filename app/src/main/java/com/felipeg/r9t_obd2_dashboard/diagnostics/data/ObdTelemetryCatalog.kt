@@ -10,8 +10,7 @@ internal data class ObdTelemetryPid(
     val lengths: IntRange,
     val decode: (List<Int>) -> List<TelemetryMeasurement>,
 ) {
-    val hex: String get() = id.toString(16).uppercase().padStart(2, '0')
-    val command: String get() = "01$hex"
+    val command: String get() = ObdPids.request(id)
 }
 
 internal object ObdTelemetryCatalog {
@@ -68,13 +67,12 @@ internal object ObdTelemetryCatalog {
     fun read(pid: ObdTelemetryPid, response: String, receivedAtMillis: Long): TelemetryReading {
         val bytes = ObdPidDecoder.telemetryPayload(response, pid)
         if (bytes == null) {
-            val noData = response.substringBefore('>').lineSequence()
-                .any { it.trim().equals("NO DATA", ignoreCase = true) }
             return TelemetryReading(
                 label = pid.label,
                 receivedAtMillis = receivedAtMillis,
                 payload = null,
-                status = if (noData) TelemetryStatus.NO_DATA else TelemetryStatus.INVALID_RESPONSE,
+                status = if (ElmResponse(response).isNoData) TelemetryStatus.NO_DATA
+                else TelemetryStatus.INVALID_RESPONSE,
             )
         }
 
@@ -82,7 +80,7 @@ internal object ObdTelemetryCatalog {
         return TelemetryReading(
             label = pid.label,
             receivedAtMillis = receivedAtMillis,
-            payload = bytes.joinToString(" ") { it.toString(16).uppercase().padStart(2, '0') },
+            payload = bytes.joinToString(" ", transform = ObdPids::hex),
             measurements = measurements,
             status = if (measurements.isEmpty()) TelemetryStatus.RAW else TelemetryStatus.NUMERIC,
         )

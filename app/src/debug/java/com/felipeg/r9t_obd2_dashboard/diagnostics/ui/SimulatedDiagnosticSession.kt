@@ -13,6 +13,7 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPids
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -61,18 +62,19 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
                 val rpm = SignalReading.Sample(rpmValue.toDouble(), timestamp)
                 val encodedRpm = rpmValue * 4
                 record(
-                    DiagnosticStage.POLLING, "Engine speed · $rpmValue rpm", "010C",
-                    "41 0C ${hex(encodedRpm shr 8)} ${hex(encodedRpm and 0xFF)}",
+                    DiagnosticStage.POLLING, "Engine speed · $rpmValue rpm", ObdPids.request(ObdPids.ENGINE_RPM),
+                    "41 0C ${ObdPids.hex(encodedRpm shr 8)} ${ObdPids.hex(encodedRpm and 0xFF)}",
                 )
                 if (tick % 2 == 0L) {
                     speed = if (position == 8) SignalReading.Unavailable
                     else SignalReading.Sample(position * 5.0, timestamp)
                     val speedValue = position * 5
+                    val speedRequest = ObdPids.request(ObdPids.VEHICLE_SPEED)
                     if (speed is SignalReading.Unavailable) {
-                        record(DiagnosticStage.POLLING, "Vehicle speed unavailable", "010D", "NO DATA")
+                        record(DiagnosticStage.POLLING, "Vehicle speed unavailable", speedRequest, "NO DATA")
                     } else {
-                        record(DiagnosticStage.POLLING, "Vehicle speed · $speedValue km/h", "010D",
-                            "41 0D ${hex(speedValue)}")
+                        record(DiagnosticStage.POLLING, "Vehicle speed · $speedValue km/h", speedRequest,
+                            "41 0D ${ObdPids.hex(speedValue)}")
                     }
                 }
                 mutableState.value = DiagnosticState.Live(
@@ -118,8 +120,6 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
             ),
         )
     }
-
-    private fun hex(value: Int): String = value.toString(16).uppercase().padStart(2, '0')
 
     private fun record(
         stage: DiagnosticStage,

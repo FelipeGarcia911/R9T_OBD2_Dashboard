@@ -1,9 +1,18 @@
 package com.felipeg.r9t_obd2_dashboard.diagnostics.data
 
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPids.ENGINE_RPM
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPids.ENGINE_RPM_BYTES
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPids.VEHICLE_SPEED
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPids.VEHICLE_SPEED_BYTES
+
+/** RPM and speed from one combined request; either is null when the ECU left it out. */
+internal data class RpmAndSpeed(val rpm: Double?, val speedKmh: Double?)
+
 internal object ObdPidDecoder {
+    private const val HEX_DIGITS = "0123456789ABCDEF"
+
     fun supportedPids(response: String, basePid: Int = 0): Set<Int>? {
-        val prefix = "41" + basePid.toString(16).uppercase().padStart(2, '0')
-        val payload = payload(response, prefix, 4) ?: return null
+        val payload = payload(response, ObdPids.responsePrefix(basePid), 4) ?: return null
         return buildSet {
             payload.forEachIndexed { byteIndex, byte ->
                 for (bitIndex in 0..7) {
@@ -16,10 +25,23 @@ internal object ObdPidDecoder {
     }
 
     fun engineRpm(response: String): Double? {
-        return engineRpm(payload(response, "410C", 2) ?: return null)
+        return engineRpm(payload(response, ObdPids.responsePrefix(ENGINE_RPM), ENGINE_RPM_BYTES) ?: return null)
     }
 
-    fun speedKmh(response: String): Int? = payload(response, "410D", 1)?.single()
+    fun speedKmh(response: String): Int? =
+        payload(response, ObdPids.responsePrefix(VEHICLE_SPEED), VEHICLE_SPEED_BYTES)?.single()
+
+    /** Decodes the reply to [ObdPids.RPM_AND_SPEED]. */
+    fun rpmAndSpeed(response: String): RpmAndSpeed {
+        val payloads = multiplePids(
+            response,
+            mapOf(ENGINE_RPM to ENGINE_RPM_BYTES, VEHICLE_SPEED to VEHICLE_SPEED_BYTES),
+        )
+        return RpmAndSpeed(
+            rpm = payloads[ENGINE_RPM]?.let(::engineRpm),
+            speedKmh = payloads[VEHICLE_SPEED]?.single()?.toDouble(),
+        )
+    }
 
     /**
      * Decodes a multi-PID Mode 01 response such as `41 0C 1A F8 0D 58`, keyed by PID.
@@ -27,10 +49,9 @@ internal object ObdPidDecoder {
      * in one frame or one frame per PID; PIDs it omits are absent from the result.
      */
     fun multiplePids(response: String, lengths: Map<Int, Int>): Map<Int, List<Int>> = buildMap {
-        response.substringBefore('>').lineSequence().forEach { line ->
-            val frame = line.filterNot(Char::isWhitespace).uppercase()
+        ElmResponse(response).frames.forEach { frame ->
             if (!frame.startsWith("41") || frame.length % 2 != 0) return@forEach
-            if (frame.any { it !in "0123456789ABCDEF" }) return@forEach
+            if (frame.any { it !in HEX_DIGITS }) return@forEach
             val bytes = frame.chunked(2).drop(1).map { it.toInt(16) }
             var index = 0
             while (index < bytes.size) {
@@ -46,15 +67,14 @@ internal object ObdPidDecoder {
     fun engineRpm(payload: List<Int>): Double = (payload[0] * 256 + payload[1]) / 4.0
 
     fun telemetryPayload(response: String, pid: ObdTelemetryPid): List<Int>? =
-        payload(response, "41${pid.hex}", pid.lengths)
+        payload(response, ObdPids.responsePrefix(pid.id), pid.lengths)
 
     private fun payload(response: String, prefix: String, size: Int): List<Int>? =
         payload(response, prefix, size..size)
 
     // The ELM327 session requests headerless output. Each line is a separate ECU response.
     private fun payload(response: String, prefix: String, sizes: IntRange): List<Int>? =
-        response.substringBefore('>').lineSequence().firstNotNullOfOrNull { line ->
-            val frame = line.filterNot(Char::isWhitespace).uppercase()
+        ElmResponse(response).frames.firstNotNullOfOrNull { frame ->
             if (!frame.startsWith(prefix)) return@firstNotNullOfOrNull null
             val length = frame.length - prefix.length
             if (length % 2 != 0 || length / 2 !in sizes) {
@@ -62,7 +82,7 @@ internal object ObdPidDecoder {
             }
 
             val bytes = frame.drop(prefix.length).chunked(2)
-            if (bytes.any { byte -> byte.any { it !in "0123456789ABCDEF" } }) {
+            if (bytes.any { byte -> byte.any { it !in HEX_DIGITS } }) {
                 return@firstNotNullOfOrNull null
             }
             bytes.map { it.toInt(16) }

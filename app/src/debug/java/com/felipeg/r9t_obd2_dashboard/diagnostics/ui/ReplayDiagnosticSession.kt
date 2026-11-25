@@ -9,7 +9,9 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmLogEvent
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmResponse
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPidDecoder
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ObdPids
 import java.io.IOException
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -100,25 +102,21 @@ internal class ReplayDiagnosticSession(
                     when (entry.trace.command) {
                         "ATI" -> mutableState.value = DiagnosticState.WaitingForEcu
                         "ATDP" -> {
-                            val protocol = response.substringBefore('>').lineSequence()
-                                .map(String::trim).firstOrNull { it.isNotEmpty() && it != "ATDP" }
-                            live = live.copy(protocol = protocol)
+                            // Same reading of the reply as the live session, so replays show its protocol.
+                            live = live.copy(protocol = ElmResponse(response).answer)
                             mutableState.value = live
                         }
-                        "010C" -> {
+                        RPM_REQUEST -> {
                             live = live.copy(engineRpm = reading(ObdPidDecoder.engineRpm(response), entry))
                             mutableState.value = live
                         }
-                        "010D" -> {
+                        SPEED_REQUEST -> {
                             live = live.copy(speedKmh = reading(ObdPidDecoder.speedKmh(response)?.toDouble(), entry))
                             mutableState.value = live
                         }
-                        "010C0D" -> {
-                            val payloads = ObdPidDecoder.multiplePids(response, mapOf(0x0C to 2, 0x0D to 1))
-                            live = live.copy(
-                                engineRpm = reading(payloads[0x0C]?.let(ObdPidDecoder::engineRpm), entry),
-                                speedKmh = reading(payloads[0x0D]?.single()?.toDouble(), entry),
-                            )
+                        ObdPids.RPM_AND_SPEED -> {
+                            val (rpm, speed) = ObdPidDecoder.rpmAndSpeed(response)
+                            live = live.copy(engineRpm = reading(rpm, entry), speedKmh = reading(speed, entry))
                             mutableState.value = live
                         }
                     }
@@ -171,5 +169,7 @@ internal class ReplayDiagnosticSession(
     companion object {
         const val SAMPLE_CAPTURE = "sample"
         private const val MAX_ENTRIES = 50_000
+        private val RPM_REQUEST = ObdPids.request(ObdPids.ENGINE_RPM)
+        private val SPEED_REQUEST = ObdPids.request(ObdPids.VEHICLE_SPEED)
     }
 }

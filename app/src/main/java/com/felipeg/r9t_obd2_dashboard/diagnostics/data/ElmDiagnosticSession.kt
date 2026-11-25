@@ -34,9 +34,6 @@ private const val SPEED_PERIOD_MS = 250L
  */
 private const val SECONDARY_PERIOD_MS = 1_000L
 
-/** Requests engine RPM and vehicle speed in one CAN exchange. */
-private const val RPM_AND_SPEED = "010C0D"
-private val RPM_AND_SPEED_LENGTHS = mapOf(0x0C to 2, 0x0D to 1)
 internal const val MAX_RECONNECTS = 10
 
 /** Errors that another attempt cannot fix without the rider's intervention. */
@@ -149,7 +146,7 @@ internal class ElmDiagnosticSession(
         showProgress(DiagnosticState.WaitingForAdapter)
         exchange("ATZ", "Reset adapter")
         val identification = exchange("ATI", "Identify adapter")
-        if (answer(identification) == null) invalidResponse()
+        if (ElmResponse(identification).answer == null) invalidResponse()
         configure("ATE0", "Disable echo")
         configure("ATH0", "Disable headers")
         selectProtocol()
@@ -158,15 +155,12 @@ internal class ElmDiagnosticSession(
         showProgress(DiagnosticState.WaitingForEcu)
         val support = exchange("0100", "Read supported PIDs")
         val supported = ObdPidDecoder.supportedPids(support) ?: run {
-            // UNABLE TO CONNECT: the ELM327 found no protocol, usually because the ignition is off.
-            val noData = support.substringBefore('>').lineSequence().map(String::trim)
-                .any { it.equals("NO DATA", ignoreCase = true) || it.equals("UNABLE TO CONNECT", ignoreCase = true) }
-            if (noData) throw ElmTransportException(DiagnosticError.NO_ECU_DATA)
+            if (ElmResponse(support).ecuDidNotAnswer) throw ElmTransportException(DiagnosticError.NO_ECU_DATA)
             invalidResponse()
         }
-        recordPidSupport(supported, 0x0C, "010C", "Engine speed")
-        recordPidSupport(supported, 0x0D, "010D", "Vehicle speed")
-        val protocol = answer(exchange("ATDP", "Read active protocol"))
+        recordPidSupport(supported, ObdPids.ENGINE_RPM, "Engine speed")
+        recordPidSupport(supported, ObdPids.VEHICLE_SPEED, "Vehicle speed")
+        val protocol = ElmResponse(exchange("ATDP", "Read active protocol")).answer
         val advertised = discoverSupportedPids(supported)
         stage = DiagnosticStage.POLLING
         poll(protocol, advertised)
@@ -191,16 +185,13 @@ internal class ElmDiagnosticSession(
      * motorcycle uses. Adapters that reject `ATSPA6` fall back to a plain automatic search.
      */
     private suspend fun selectProtocol() {
-        if (!isOk(exchange("ATSPA6", "Select protocol automatically, trying CAN 11/500 first"))) {
+        if (!ElmResponse(exchange("ATSPA6", "Select protocol automatically, trying CAN 11/500 first")).isOk) {
             configure("ATSP0", "Select protocol automatically")
         }
     }
 
-    private fun isOk(response: String): Boolean =
-        response.substringBefore('>').lineSequence().any { it.trim() == "OK" }
-
     private suspend fun configure(command: String, description: String) {
-        if (!isOk(exchange(command, description))) invalidResponse()
+        if (!ElmResponse(exchange(command, description)).isOk) invalidResponse()
     }
 
     private suspend fun exchange(command: String, description: String): String {
@@ -222,7 +213,7 @@ internal class ElmDiagnosticSession(
         val supported = initial.toMutableSet()
         for (page in 0x20..0xA0 step 0x20) {
             if (page !in supported) break
-            val command = "01" + page.toString(16).uppercase()
+            val command = ObdPids.request(page)
             val response = exchange(command, "Read extended PID support")
             val pagePids = ObdPidDecoder.supportedPids(response, page)
             if (pagePids == null) {
@@ -231,25 +222,29 @@ internal class ElmDiagnosticSession(
             }
             supported += pagePids
         }
-        recordPidSupport(supported, 0xA4, "01A4", "Actual gear")
-        recordPidSupport(supported, 0xA6, "01A6", "Odometer")
-        if (0xA4 in supported) exchange("01A4", "Capture actual gear for field validation")
-        if (0xA6 in supported) exchange("01A6", "Capture odometer for field validation")
+        recordPidSupport(supported, ObdPids.ACTUAL_GEAR, "Actual gear")
+        recordPidSupport(supported, ObdPids.ODOMETER, "Odometer")
+        if (ObdPids.ACTUAL_GEAR in supported) {
+            exchange(ObdPids.request(ObdPids.ACTUAL_GEAR), "Capture actual gear for field validation")
+        }
+        if (ObdPids.ODOMETER in supported) {
+            exchange(ObdPids.request(ObdPids.ODOMETER), "Capture odometer for field validation")
+        }
         return supported.toSet()
     }
 
     private suspend fun poll(protocol: String?, advertised: Set<Int>): Nothing {
         val sensors = SensorRotation(ObdTelemetryCatalog.pids.filter { it.id in advertised }, EngineVitalPids.all)
-        val speedSupported = 0x0D in advertised
-        val rpmSupported = 0x0C in advertised
+        val speedSupported = ObdPids.VEHICLE_SPEED in advertised
+        val rpmSupported = ObdPids.ENGINE_RPM in advertised
 
         // Probe once whether the ECU answers RPM and speed in a single exchange.
         val probe = if (rpmSupported && speedSupported) readRpmAndSpeed() else null
         val combined = probe != null &&
             probe.first is SignalReading.Sample && probe.second is SignalReading.Sample
         if (probe != null) {
-            record(if (combined) "Combined $RPM_AND_SPEED supported · polling RPM and speed together"
-                else "Combined $RPM_AND_SPEED not supported · polling RPM and speed separately")
+            record(if (combined) "Combined ${ObdPids.RPM_AND_SPEED} supported · polling RPM and speed together"
+                else "Combined ${ObdPids.RPM_AND_SPEED} not supported · polling RPM and speed separately")
         }
         var live = if (combined) {
             DiagnosticState.Live(protocol, probe.first, probe.second, telemetry = TelemetrySnapshot(advertised))
@@ -301,20 +296,20 @@ internal class ElmDiagnosticSession(
     }
 
     private suspend fun readRpm(supported: Boolean): SignalReading =
-        readSignal(supported, "010C", "Engine speed", "rpm", ObdPidDecoder::engineRpm)
+        readSignal(supported, ObdPids.request(ObdPids.ENGINE_RPM), "Engine speed", "rpm", ObdPidDecoder::engineRpm)
 
     private suspend fun readSpeed(supported: Boolean): SignalReading =
-        readSignal(supported, "010D", "Vehicle speed", "km/h") { ObdPidDecoder.speedKmh(it)?.toDouble() }
+        readSignal(supported, ObdPids.request(ObdPids.VEHICLE_SPEED), "Vehicle speed", "km/h") {
+            ObdPidDecoder.speedKmh(it)?.toDouble()
+        }
 
     private suspend fun readRpmAndSpeed(): Pair<SignalReading, SignalReading> {
-        val response = transmit(RPM_AND_SPEED, "Engine and vehicle speed")
+        val response = transmit(ObdPids.RPM_AND_SPEED, "Engine and vehicle speed")
         val receivedAtMillis = monotonicMillis()
-        val payloads = ObdPidDecoder.multiplePids(response, RPM_AND_SPEED_LENGTHS)
-        val rpm = payloads[0x0C]?.let(ObdPidDecoder::engineRpm)
-        val speed = payloads[0x0D]?.single()?.toDouble()
+        val (rpm, speed) = ObdPidDecoder.rpmAndSpeed(response)
         record(
             "Engine speed · ${rpm ?: "unavailable"} rpm · Vehicle speed · ${speed ?: "unavailable"} km/h",
-            RPM_AND_SPEED, response,
+            ObdPids.RPM_AND_SPEED, response,
         )
         fun sample(value: Double?) =
             if (value == null) SignalReading.Unavailable else SignalReading.Sample(value, receivedAtMillis)
@@ -325,16 +320,16 @@ internal class ElmDiagnosticSession(
 
     private suspend fun readTelemetry(pid: ObdTelemetryPid): TelemetryReading {
         val response = transmit(pid.command, pid.label)
-        val reading = ObdTelemetryCatalog.read(pid, response, System.nanoTime() / 1_000_000)
+        val reading = ObdTelemetryCatalog.read(pid, response, monotonicMillis())
         val summary = reading.measurements.joinToString(", ") { "${it.label}: ${it.value} ${it.unit}" }
         val detail = summary.ifEmpty { reading.status.name.lowercase().replace('_', ' ') }
         record("${pid.label} · $detail", pid.command, response)
         return reading
     }
 
-    private suspend fun recordPidSupport(supported: Set<Int>, pid: Int, request: String, label: String) {
+    private suspend fun recordPidSupport(supported: Set<Int>, pid: Int, label: String) {
         val availability = if (pid in supported) "supported" else "not advertised by the ECU"
-        record("$label ($request) · $availability")
+        record("$label (${ObdPids.request(pid)}) · $availability")
     }
 
     private suspend fun readSignal(
@@ -346,16 +341,12 @@ internal class ElmDiagnosticSession(
     ): SignalReading {
         if (!supported) return SignalReading.Unavailable
         val response = transmit(command, label)
-        val receivedAtMillis = System.nanoTime() / 1_000_000
+        val receivedAtMillis = monotonicMillis()
         val value = decode(response)
         record(if (value == null) "$label unavailable" else "$label · $value $unit", command, response)
         return if (value == null) SignalReading.Unavailable
         else SignalReading.Sample(value, receivedAtMillis)
     }
-
-    private fun answer(response: String): String? =
-        response.substringBefore('>').lineSequence().map(String::trim)
-            .firstOrNull { it.isNotEmpty() && it !in setOf("ATI", "ATDP", "?", "ERROR", "NO DATA") }
 
     private fun invalidResponse(): Nothing = throw ElmTransportException(DiagnosticError.INVALID_RESPONSE)
 

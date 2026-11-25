@@ -47,6 +47,13 @@ class ObdPidDecoderTest {
     }
 
     @Test
+    fun decodesTheCombinedRpmAndSpeedReply() {
+        assertEquals(RpmAndSpeed(1726.0, 32.0), ObdPidDecoder.rpmAndSpeed("41 0C 1A F8 0D 20\r>"))
+        assertEquals(RpmAndSpeed(1726.0, null), ObdPidDecoder.rpmAndSpeed("41 0C 1A F8\r>"))
+        assertEquals(RpmAndSpeed(null, null), ObdPidDecoder.rpmAndSpeed("NO DATA\r>"))
+    }
+
+    @Test
     fun rejectsCombinedResponsesThatCannotBeParsed() {
         val lengths = mapOf(0x0C to 2, 0x0D to 1)
         assertEquals(emptyMap<Int, List<Int>>(), ObdPidDecoder.multiplePids("NO DATA\r>", lengths))
