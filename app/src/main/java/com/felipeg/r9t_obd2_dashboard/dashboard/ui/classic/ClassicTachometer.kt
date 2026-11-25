@@ -1,7 +1,12 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui.classic
 
 import android.graphics.Paint
-import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.unit.Density
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.GaugeStyle
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.LayeredGauge
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.PreparedGauge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -37,19 +42,51 @@ private const val NUMERAL_WEIGHT = 560
 /**
  * The classic bar tachometer: straight-sided grey segments climbing the left side and running
  * across the top, lit from zero to the reading, red from the limit zone on, with a rail along
- * the outside and italic numerals beyond it. [thousands] is the animated reading; null leaves
- * every segment dark.
+ * the outside and italic numerals beyond it. Drawn by [LayeredGauge]: the dark scale, rail and
+ * numerals stay still while only the lit segments follow [thousands]; null leaves them all dark.
  */
 @Composable
-internal fun ClassicTachometer(thousands: Float?, layout: ClassicDialLayout, modifier: Modifier = Modifier) {
+internal fun ClassicTachometer(thousands: () -> Float?, layout: ClassicDialLayout, modifier: Modifier = Modifier) {
     val numerals = TftTypography.rememberNumeralPaint(NUMERAL_WEIGHT).apply { textAlign = Paint.Align.CENTER }
     val description = stringResource(R.string.dashboard_tachometer_description)
-    Canvas(modifier.semantics { contentDescription = description }) {
-        val scale = ScaleBand(ClassicScalePath(layout.scaleEnd), unit = layout.unit.toPx())
-        translate(left = layout.left.toPx()) {
-            drawSegments(scale, thousands)
-            drawRail(scale)
-            drawNumerals(scale, numerals)
+    val style = remember(layout, numerals) { ClassicGaugeStyle(layout, numerals) }
+    LayeredGauge(style, thousands, modifier.semantics { contentDescription = description })
+}
+
+/** A whole segment's lit paths, built once per size. */
+private class LitSegment(val start: Float, val end: Float, val face: Path, val shade: Path, val paint: SegmentPaint)
+
+private class ClassicGaugeStyle(private val layout: ClassicDialLayout, private val numerals: Paint) : GaugeStyle {
+    override fun prepare(density: Density, size: Size): PreparedGauge {
+        val scale = ScaleBand(ClassicScalePath(layout.scaleEnd), unit = with(density) { layout.unit.toPx() })
+        val left = with(density) { layout.left.toPx() }
+        val lit = SegmentBounds.zipWithNext().map { (start, end) ->
+            val paint = if (TachometerScale.isInLimitZone(start)) LimitLit else Lit
+            LitSegment(start, end, scale.area(start, end), scale.area(start, end, outer = scale.shadeEdge), paint)
+        }
+        return object : PreparedGauge {
+            override fun DrawScope.drawStatic() = translate(left = left) {
+                SegmentBounds.zipWithNext().forEach { (start, end) ->
+                    drawSegment(scale, start, end, if (TachometerScale.isInLimitZone(start)) LimitDim else Dim)
+                }
+                drawCuts(scale, upTo = TachometerScale.MAX)
+                drawRail(scale)
+                drawNumerals(scale, numerals)
+            }
+
+            /** Whole segments from the cached paths; only the one the reading ends in is built. */
+            override fun DrawScope.drawReading(thousands: Float) = translate(left = left) {
+                for (segment in lit) {
+                    if (thousands <= segment.start) break
+                    if (thousands >= segment.end) {
+                        drawPath(segment.face, segment.paint.face)
+                        drawPath(segment.shade, segment.paint.shade)
+                    } else {
+                        drawSegment(scale, segment.start, thousands, segment.paint)
+                    }
+                }
+                drawCuts(scale, upTo = thousands)
+            }
         }
     }
 }
@@ -113,25 +150,20 @@ private val LimitLit = SegmentPaint(TftColors.Red, TftColors.RedShade)
 private val LimitDim = SegmentPaint(TftColors.RedTrack, TftColors.RedTrackShade)
 
 /**
- * Dark segments first, then the lit part up to the reading, then the black cuts between them.
- * Each segment is two-tone: a lighter face toward the outside and a darker strip on the inside.
+ * The black cuts between segments, up to [upTo]: over the dark scale for the whole range, and
+ * again over the lit part so the gaps stay open where the reading has lit the segments.
  */
-private fun DrawScope.drawSegments(scale: ScaleBand, thousands: Float?) {
-    val reading = thousands ?: 0f
-    SegmentBounds.zipWithNext().forEach { (start, end) ->
-        val limit = TachometerScale.isInLimitZone(start)
-        drawSegment(scale, start, end, if (limit) LimitDim else Dim)
-        val litEnd = minOf(reading, end)
-        if (litEnd > start) drawSegment(scale, start, litEnd, if (limit) LimitLit else Lit)
-    }
+private fun DrawScope.drawCuts(scale: ScaleBand, upTo: Float) {
     clipPath(scale.area(0f, TachometerScale.MAX)) {
         SegmentBounds.drop(1).dropLast(1).forEach { mark ->
+            if (mark > upTo) return@clipPath
             val (outer, inner) = scale.cut(mark, scale.gap)
             drawLine(TftColors.GroundEdge, outer, inner, strokeWidth = scale.gap)
         }
     }
 }
 
+/** Each segment is two-tone: a lighter face toward the outside and a darker strip on the inside. */
 private fun DrawScope.drawSegment(scale: ScaleBand, start: Float, end: Float, paint: SegmentPaint) {
     drawPath(scale.area(start, end), paint.face)
     drawPath(scale.area(start, end, outer = scale.shadeEdge), paint.shade)

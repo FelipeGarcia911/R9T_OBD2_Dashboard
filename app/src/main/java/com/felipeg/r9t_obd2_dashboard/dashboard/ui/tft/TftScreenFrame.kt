@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.staticLayer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,14 +54,19 @@ internal fun TftScreenFrame(
     bottomEnd: @Composable BoxScope.() -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
-    Column(
-        modifier.fillMaxSize().background(Brush.radialGradient(listOf(TftColors.GroundCenter, TftColors.GroundEdge))),
-    ) {
-        val topBar = Modifier.height(TftBars.TopHeight)
-        InfoBar(style.topBar?.let { topBar.background(it) } ?: topBar, topStart, topCenter, topEnd)
-        AccentRule(style.rule)
-        Box(Modifier.fillMaxWidth().weight(1f), content = content)
-        InfoBar(Modifier.height(TftBars.BottomHeight), bottomStart, {}, bottomEnd)
+    Box(modifier.fillMaxSize()) {
+        // The full-screen ground never changes: kept in its own cached layer.
+        Spacer(
+            Modifier.matchParentSize().staticLayer()
+                .background(Brush.radialGradient(listOf(TftColors.GroundCenter, TftColors.GroundEdge))),
+        )
+        Column(Modifier.fillMaxSize()) {
+            val topBar = Modifier.height(TftBars.TopHeight)
+            InfoBar(style.topBar?.let { topBar.background(it) } ?: topBar, topStart, topCenter, topEnd)
+            AccentRule(style.rule)
+            Box(Modifier.fillMaxWidth().weight(1f), content = content)
+            InfoBar(Modifier.height(TftBars.BottomHeight), bottomStart, {}, bottomEnd)
+        }
     }
 }
 

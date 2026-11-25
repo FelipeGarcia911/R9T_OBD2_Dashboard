@@ -45,6 +45,14 @@ To do:
    RPM by ~100 ms; StiffnessMedium brings that to ~50 ms with readings now every ~65 ms.
 4. Re-measure frames per second and jank with `dumpsys gfxinfo` after each change.
 
+Done (items 1–3): each display's gauge is a `GaugeStyle` drawn by `LayeredGauge`, with the scale
+in a cached GPU layer and only the reading redrawn per frame; speed digits recompose only when the
+whole number changes; the frame's ground is cached; the dashboard asks for 60 Hz; the spring is
+StiffnessMedium. `DashboardLayersTest` guards the layering and `DashboardFrameBenchmark` measures
+frames (`adb logcat -d -s DashboardBench`). On a G30-like emulator (720×1600, host GPU, 4 cores),
+before → after: UI thread per frame p50 14–22 ms → 4–8 ms, 29–52 fps → 46–59 fps. The render
+thread (~11–15 ms) is unchanged and is the next lever. Still to measure on the phone itself.
+
 ## Release build crashes at startup
 
 With the release `optimization` settings, R8 produces an `IllegalAccessError` (a Kotlin collection

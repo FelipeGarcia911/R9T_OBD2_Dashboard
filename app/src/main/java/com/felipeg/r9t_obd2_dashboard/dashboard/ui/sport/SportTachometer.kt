@@ -3,7 +3,11 @@ package com.felipeg.r9t_obd2_dashboard.dashboard.ui.sport
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
 import android.graphics.Paint
-import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.Density
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.GaugeStyle
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.LayeredGauge
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.PreparedGauge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -24,22 +28,32 @@ import com.felipeg.r9t_obd2_dashboard.R
 private const val TICKS_PER_THOUSAND = 4
 
 /**
- * Semicircular sport tachometer. [thousands] is the animated reading on the scale;
- * null hides the needle.
+ * Semicircular sport tachometer: the scale, ticks and numerals stay still while the needle
+ * follows [thousands], drawn by [LayeredGauge] so only the needle redraws as the reading moves.
+ * Null hides the needle.
  */
 @Composable
-internal fun SportTachometer(thousands: Float?, layout: SportDialLayout, modifier: Modifier = Modifier) {
+internal fun SportTachometer(thousands: () -> Float?, layout: SportDialLayout, modifier: Modifier = Modifier) {
     val numerals = TftTypography.rememberNumeralPaint().apply { textAlign = Paint.Align.CENTER }
     val description = stringResource(R.string.dashboard_tachometer_description)
-    Canvas(modifier.semantics { contentDescription = description }) {
-        val dial = Dial(
-            center = Offset(layout.centerX.toPx(), layout.centerY.toPx()),
-            radius = layout.radius.toPx(),
-        )
-        drawScale(dial)
-        drawTicks(dial)
-        drawNumerals(dial, numerals)
-        if (thousands != null) drawNeedle(dial, thousands)
+    val style = remember(layout, numerals) { SportGaugeStyle(layout, numerals) }
+    LayeredGauge(style, thousands, modifier.semantics { contentDescription = description })
+}
+
+private class SportGaugeStyle(private val layout: SportDialLayout, private val numerals: Paint) : GaugeStyle {
+    override fun prepare(density: Density, size: Size): PreparedGauge {
+        val dial = with(density) {
+            Dial(center = Offset(layout.centerX.toPx(), layout.centerY.toPx()), radius = layout.radius.toPx())
+        }
+        return object : PreparedGauge {
+            override fun DrawScope.drawStatic() {
+                drawScale(dial)
+                drawTicks(dial)
+                drawNumerals(dial, numerals)
+            }
+
+            override fun DrawScope.drawReading(thousands: Float) = drawNeedle(dial, thousands)
+        }
     }
 }
 

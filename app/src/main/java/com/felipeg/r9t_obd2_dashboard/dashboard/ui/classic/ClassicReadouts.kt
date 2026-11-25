@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -33,9 +36,13 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.felipeg.r9t_obd2_dashboard.R
 
-/** Large italic speed digits with the unit beside them, centered where the layout puts the speed. */
+/**
+ * Large italic speed digits with the unit beside them, centered where the layout puts the speed.
+ * [speed] is the animated reading; this recomposes only when the whole number shown changes.
+ */
 @Composable
-internal fun ClassicSpeedReadout(speedKmh: Int?, layout: ClassicDialLayout) {
+internal fun ClassicSpeedReadout(speed: () -> Int?, layout: ClassicDialLayout) {
+    val speedKmh by remember(speed) { derivedStateOf(speed) }
     val unit = layout.unit
     val width = unit * 1.2f
     val center = layout.speedCenter
