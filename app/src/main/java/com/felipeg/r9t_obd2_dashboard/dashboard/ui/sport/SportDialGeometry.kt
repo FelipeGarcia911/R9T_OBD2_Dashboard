@@ -27,18 +27,22 @@ internal object SportDialAngles {
     }
 }
 
-/** Where the dial sits on screen, in dp. Shared by the canvas and the readouts on top of it. */
+/**
+ * Where the dial sits inside the instrument area between the TFT bars, in dp. Shared by the
+ * canvas and the readouts drawn over it.
+ */
 internal data class SportDialLayout(val centerX: Dp, val centerY: Dp, val radius: Dp) {
     companion object {
+        // Room for the needle, which overshoots the arc by ~5% of the radius.
         private val TOP_MARGIN = 20.dp
-        private val BOTTOM_ROW = 72.dp
+        private val BOTTOM_MARGIN = 2.dp
 
         /** The arc rises a full radius above its center and dips ~0.16 radius below it. */
         private const val HEIGHT_IN_RADII = 1.18f
-        private const val MAX_WIDTH_SHARE = .40f
+        private const val MAX_WIDTH_SHARE = .36f
 
         fun fit(width: Dp, height: Dp): SportDialLayout {
-            val radius = min(width * MAX_WIDTH_SHARE, (height - BOTTOM_ROW) / HEIGHT_IN_RADII)
+            val radius = min(width * MAX_WIDTH_SHARE, (height - TOP_MARGIN - BOTTOM_MARGIN) / HEIGHT_IN_RADII)
             return SportDialLayout(width / 2, TOP_MARGIN + radius, radius)
         }
     }

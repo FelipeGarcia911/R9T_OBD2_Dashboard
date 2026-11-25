@@ -27,11 +27,13 @@ class SportDialGeometryTest {
     }
 
     @Test
-    fun dialFitsHeightOnWidePhonesAndWidthOnSquareScreens() {
-        val phone = SportDialLayout.fit(800.dp, 360.dp)
+    fun dialFitsTheInstrumentAreaOnWidePhonesAndItsWidthOnSquareScreens() {
+        // 800 x 360 dp phone minus the 56 dp top and bottom bars and the cyan rule.
+        val phone = SportDialLayout.fit(800.dp, 246.dp)
         assertEquals(400.dp, phone.centerX)
-        assertEquals((360.dp - 72.dp) / 1.18f, phone.radius)
+        assertEquals((246.dp - 22.dp) / 1.18f, phone.radius)
+        assertEquals(20.dp + phone.radius, phone.centerY)
         val square = SportDialLayout.fit(500.dp, 480.dp)
-        assertEquals(200.dp, square.radius)
+        assertEquals(180.dp, square.radius)
     }
 }

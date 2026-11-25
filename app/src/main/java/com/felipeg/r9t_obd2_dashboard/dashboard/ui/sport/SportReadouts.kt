@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -70,15 +69,14 @@ internal fun SportSpeedReadout(speedKmh: Int?, layout: SportDialLayout) {
     }
 }
 
-/** Gear in a raised box: green N for neutral, cyan for a gear number. */
+/** Gear in a raised box: green N for neutral, cyan for a gear number. The caller sizes it. */
 @Composable
-internal fun SportGearBox(gear: GearPosition, radius: Dp, modifier: Modifier = Modifier) {
+internal fun SportGearBox(gear: GearPosition, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(6.dp)
     val label = gear.dashboardLabel()
     val color = if (gear == GearPosition.Neutral) TftColors.Green else TftColors.Cyan
     Box(
         modifier
-            .size(radius * .30f, radius * .34f)
             .background(Brush.verticalGradient(listOf(TftColors.GearBoxTop, TftColors.GearBoxBottom)), shape)
             .border(1.dp, TftColors.GearBoxOutline, shape)
             .semantics { contentDescription = if (gear == GearPosition.Neutral) "Neutral" else "Gear $label" },

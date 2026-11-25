@@ -5,6 +5,7 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticSession
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticStage
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEntry
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.EngineVitalPids
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.TelemetryReading
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.TelemetrySnapshot
@@ -27,8 +28,11 @@ private const val PRIMARY_PERIOD_MS = 50L
 /** Only used when the ECU rejects the combined request and speed must be polled separately. */
 private const val SPEED_PERIOD_MS = 250L
 
-/** One secondary sensor per second keeps the bus free for the dashboard readings. */
-private const val OTHER_SENSOR_PERIOD_MS = 1_000L
+/**
+ * RPM and speed own the bus: only one secondary reading per second fits between them.
+ * Engine vitals take three of every four of those slots and may lag by several seconds.
+ */
+private const val SECONDARY_PERIOD_MS = 1_000L
 
 /** Requests engine RPM and vehicle speed in one CAN exchange. */
 private const val RPM_AND_SPEED = "010C0D"
@@ -235,10 +239,9 @@ internal class ElmDiagnosticSession(
     }
 
     private suspend fun poll(protocol: String?, advertised: Set<Int>): Nothing {
-        val sensors = ObdTelemetryCatalog.pids.filter { it.id in advertised }
+        val sensors = SensorRotation(ObdTelemetryCatalog.pids.filter { it.id in advertised }, EngineVitalPids.all)
         val speedSupported = 0x0D in advertised
         val rpmSupported = 0x0C in advertised
-        var nextSensor = 0
 
         // Probe once whether the ECU answers RPM and speed in a single exchange.
         val probe = if (rpmSupported && speedSupported) readRpmAndSpeed() else null
@@ -262,7 +265,7 @@ internal class ElmDiagnosticSession(
         var nextSpeedAt =
             if (speedSupported && !combined) monotonicMillis() + SPEED_PERIOD_MS else Long.MAX_VALUE
         var nextSensorAt =
-            if (sensors.isNotEmpty()) monotonicMillis() + OTHER_SENSOR_PERIOD_MS else Long.MAX_VALUE
+            if (!sensors.isEmpty) monotonicMillis() + SECONDARY_PERIOD_MS else Long.MAX_VALUE
         delay(PRIMARY_PERIOD_MS)
 
         // Exits only by exception: an exchange failure or cancellation during delay.
@@ -284,13 +287,12 @@ internal class ElmDiagnosticSession(
                 nextSpeedAt = monotonicMillis() + SPEED_PERIOD_MS
                 mutableState.value = live
             } else if (nextSensorAt <= now) {
-                val pid = sensors[nextSensor]
+                val pid = sensors.next()
                 val reading = readTelemetry(pid)
                 live = live.copy(telemetry = live.telemetry.copy(
                     readings = live.telemetry.readings + (pid.id to reading),
                 ))
-                nextSensor = (nextSensor + 1) % sensors.size
-                nextSensorAt = monotonicMillis() + OTHER_SENSOR_PERIOD_MS
+                nextSensorAt = monotonicMillis() + SECONDARY_PERIOD_MS
                 mutableState.value = live
             }
 

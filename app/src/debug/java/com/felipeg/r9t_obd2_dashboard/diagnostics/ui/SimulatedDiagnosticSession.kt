@@ -1,5 +1,11 @@
 package com.felipeg.r9t_obd2_dashboard.diagnostics.ui
 
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.EngineVitalPids
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.TelemetryMeasurement
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.TelemetryReading
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.TelemetrySnapshot
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.TelemetryStatus
+import kotlin.math.sin
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticError
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticSession
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticStage
@@ -75,6 +81,7 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
                     speedKmh = speed,
                     gear = if (position == 0) GearPosition.Neutral else GearPosition.Forward(1 + position / 3),
                     odometerKm = SignalReading.Sample(12_480.0 + tick * 0.01, timestamp),
+                    telemetry = simulatedVitals(tick, timestamp),
                 )
                 delay(500)
                 tick++
@@ -92,6 +99,24 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
     private companion object {
         val DEMO_RPM = intArrayOf(1_100, 1_500, 2_600, 3_800, 4_900, 6_300,
             7_600, 8_450, 6_900, 4_600, 2_900, 1_700)
+    }
+
+    /** Engine vitals within the ranges the reference bike reported, drifting slowly. */
+    private fun simulatedVitals(tick: Long, timestamp: Long): TelemetrySnapshot {
+        val drift = sin(tick / 20.0)
+        fun reading(label: String, value: Double, unit: String) = TelemetryReading(
+            label = label, receivedAtMillis = timestamp, payload = null,
+            measurements = listOf(TelemetryMeasurement(label, value, unit)), status = TelemetryStatus.NUMERIC,
+        )
+        return TelemetrySnapshot(
+            advertisedPids = EngineVitalPids.all,
+            readings = mapOf(
+                EngineVitalPids.ENGINE_TEMPERATURE to reading("Engine temperature", 116.0 + 6 * drift, "°C"),
+                EngineVitalPids.OIL_TEMPERATURE to reading("Engine oil temperature", 100.0 + 4 * drift, "°C"),
+                EngineVitalPids.MODULE_VOLTAGE to reading("Control module voltage", 14.1 - .2 * drift, "V"),
+                EngineVitalPids.INTAKE_AIR_TEMPERATURE to reading("Intake air temperature", 33.0, "°C"),
+            ),
+        )
     }
 
     private fun hex(value: Int): String = value.toString(16).uppercase().padStart(2, '0')

@@ -71,7 +71,12 @@ internal fun DashboardScreen(
     val status = state.dashboardStatus()
     val live = state as? DiagnosticState.Live
     var layout by rememberSaveable { mutableStateOf(layoutStore.load()) }
-    val toolbar: @Composable () -> Unit = {
+    Box(modifier.fillMaxSize()) {
+        when (layout) {
+            DashboardLayout.SPORT -> SportDashboardPanel(live, time, status)
+            DashboardLayout.CLASSIC -> DashboardPanel(live, time, status, onDiagnostics)
+        }
+        // Same place on every display, so the rider always finds it in one spot.
         DashboardToolbar(
             selected = layout,
             onSelect = { selected ->
@@ -80,13 +85,13 @@ internal fun DashboardScreen(
             },
             sourceLabel = sourceLabel,
             onDiagnostics = onDiagnostics,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = TOOLBAR_BOTTOM_INSET),
         )
     }
-    when (layout) {
-        DashboardLayout.SPORT -> SportDashboardPanel(live, time, status, toolbar, modifier)
-        DashboardLayout.CLASSIC -> DashboardPanel(live, time, status, onDiagnostics, modifier, toolbar)
-    }
 }
+
+/** Distance from the bottom edge to the shared toolbar. Displays keep their bottom center free. */
+internal val TOOLBAR_BOTTOM_INSET = 14.dp
 
 /** Short connection status for the dashboard footer; null while readings are live. */
 private fun DiagnosticState.dashboardStatus(): String? = when (this) {
@@ -106,7 +111,6 @@ private fun DashboardPanel(
     status: String?,
     onDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
-    toolbar: @Composable () -> Unit = {},
 ) {
     val rpm = live?.engineRpm.valueOrNull()
     val speedReading = live?.speedKmh.valueOrNull()
@@ -150,8 +154,8 @@ private fun DashboardPanel(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("ODOMETER  $odometer km", color = Muted,
-                        style = MaterialTheme.typography.labelLarge, fontFamily = FontFamily.Monospace)
-                    toolbar()
+                        style = MaterialTheme.typography.labelLarge, fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(vertical = 10.dp))
                 }
                 Box(
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(1.dp)
