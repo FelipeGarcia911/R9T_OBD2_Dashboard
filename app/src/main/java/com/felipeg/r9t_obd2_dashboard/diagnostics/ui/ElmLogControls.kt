@@ -1,6 +1,5 @@
 package com.felipeg.r9t_obd2_dashboard.diagnostics.ui
 
-import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ElmSessionLogs
+import com.felipeg.r9t_obd2_dashboard.diagnostics.data.LogSettings
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.SessionLogFile
 import java.io.IOException
 import java.time.Instant
@@ -34,18 +34,8 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.launch
 
-internal class ElmLogSettings(context: Context) {
-    private val preferences = context.getSharedPreferences("elm-diagnostics", Context.MODE_PRIVATE)
-
-    var detailedLogging: Boolean
-        get() = preferences.getBoolean("detailed-session-logging", true)
-        set(enabled) {
-            preferences.edit().putBoolean("detailed-session-logging", enabled).apply()
-        }
-}
-
 @Composable
-internal fun ElmLogControls(settings: ElmLogSettings, logs: ElmSessionLogs) {
+internal fun ElmLogControls(settings: LogSettings, logs: ElmSessionLogs) {
     val resolver = LocalContext.current.contentResolver
     val scope = rememberCoroutineScope()
     var enabled by remember(settings) { mutableStateOf(settings.detailedLogging) }

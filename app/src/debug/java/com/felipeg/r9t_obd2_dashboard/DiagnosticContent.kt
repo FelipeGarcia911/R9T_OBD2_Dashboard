@@ -7,9 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
@@ -24,10 +22,9 @@ import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ReplayDiagnosticSession
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardScreen
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticScreen
-import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticViewModel
+import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.rememberDiagnosticViewModel
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.SimulatedDiagnosticSession
 
 @Composable
@@ -43,16 +40,11 @@ internal fun DiagnosticContent(modifier: Modifier) {
 @Composable
 private fun SimulatedDiagnosticContent(modifier: Modifier, onShowLive: () -> Unit) {
     val activity = LocalContext.current as ComponentActivity
-    val lifecycle = activity.lifecycle
     var capture by rememberSaveable { mutableStateOf<String?>(null) }
     val application = activity.applicationContext
-    val simulation = remember(activity) {
-        ViewModelProvider(activity, DiagnosticViewModel.factory(::SimulatedDiagnosticSession))
-            .get("simulated-diagnostics", DiagnosticViewModel::class.java)
-    }
-    val replay = remember(activity) {
-        val factory = DiagnosticViewModel.factory { scope -> ReplayDiagnosticSession(scope, application) }
-        ViewModelProvider(activity, factory).get("replay-diagnostics", DiagnosticViewModel::class.java)
+    val simulation = rememberDiagnosticViewModel(activity, "simulated-diagnostics", ::SimulatedDiagnosticSession)
+    val replay = rememberDiagnosticViewModel(activity, "replay-diagnostics") { scope ->
+        ReplayDiagnosticSession(scope, application)
     }
     val model = if (capture == null) simulation else replay
     val adapterId = capture ?: "demo"
@@ -62,9 +54,8 @@ private fun SimulatedDiagnosticContent(modifier: Modifier, onShowLive: () -> Uni
             capture = uri.toString()
         }
     }
-    val states = remember(model, lifecycle) { model.uiState.flowWithLifecycle(lifecycle) }
-    val initialState = remember(model) { model.uiState.value }
-    val state by states.collectAsState(initialState)
+    val state by model.uiState.collectAsStateWithLifecycle()
+    val trace by model.trace.collectAsStateWithLifecycle()
     var showDashboard by rememberSaveable { mutableStateOf(false) }
     if (showDashboard) {
         BackHandler { showDashboard = false }
@@ -76,9 +67,6 @@ private fun SimulatedDiagnosticContent(modifier: Modifier, onShowLive: () -> Uni
         )
         return
     }
-    val traceStates = remember(model, lifecycle) { model.trace.flowWithLifecycle(lifecycle) }
-    val initialTrace = remember(model) { model.trace.value }
-    val trace by traceStates.collectAsState(initialTrace)
     Column(modifier) {
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
