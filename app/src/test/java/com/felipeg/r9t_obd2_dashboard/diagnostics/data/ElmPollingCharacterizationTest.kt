@@ -43,19 +43,19 @@ class ElmPollingCharacterizationTest {
         }
         val elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000
 
-        val polling = transport.commands.dropWhile { it != "010C0D" }
+        val polling = transport.commands.dropWhile { it != "010C0D1" }
         assertEquals(
-            "Probes the combined request once, then reads both signals for the first live state",
-            listOf("010C0D", "010C", "010D"), polling.take(3),
+            "Probes the combined request with and without a single-reply count, then reads both signals",
+            listOf("010C0D1", "010C0D", "010C", "010D"), polling.take(4),
         )
-        val loop = polling.drop(3)
+        val loop = polling.drop(4)
         assertEquals("Each cycle starts with RPM", "010C", loop.first())
         loop.forEachIndexed { index, command ->
             if (command != "010C") {
                 assertEquals("$command at $index must follow an RPM read: $loop", "010C", loop[index - 1])
             }
         }
-        assertFalse("Combined request is not retried after the probe fails", "010C0D" in loop)
+        assertFalse("Combined request is not retried after the probe fails", "010C0D" in loop || "010C0D1" in loop)
 
         val speedReads = loop.count { it == "010D" }
         assertTrue("Speed refreshes about every 250 ms, got $speedReads in $elapsedMillis ms", speedReads >= 4)
@@ -91,6 +91,7 @@ class ElmPollingCharacterizationTest {
             session.stop()
         }
 
+        assertEquals("The single-reply probe comes first", "010C0D1", transport.commands.first { it.startsWith("010C0D") })
         val polling = transport.commands.dropWhile { it != "010C0D" }
         assertFalse("010C" in polling || "010D" in polling)
         polling.forEachIndexed { index, command ->
@@ -107,6 +108,37 @@ class ElmPollingCharacterizationTest {
         assertEquals(83.0, coolant.measurements.single().value, 0.0)
         assertEquals("7B", coolant.payload)
         assertFalse("Only one secondary slot has passed", 0x04 in live.telemetry.readings)
+    }
+
+    @Test
+    fun anAdapterThatAcceptsSingleReplyCountsGetsThemOnEveryRequest() = runBlocking {
+        val transport = ScriptedTransport { command ->
+            when (command) {
+                "0100" -> ADVERTISES_LOAD_COOLANT_RPM_SPEED
+                "ATDP" -> "ISO 15765-4 (CAN 11/500)\r>"
+                "010C0D1" -> "41 0C 1A F8 0D 20\r>"
+                "01041" -> "41 04 80\r>"
+                "01051" -> "41 05 7B\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport)
+        val live: DiagnosticState.Live
+        try {
+            session.start("paired-device")
+            delay(1_400)
+            live = session.state.value as DiagnosticState.Live
+        } finally {
+            session.stop()
+        }
+
+        val polling = transport.commands.dropWhile { it != "010C0D1" }
+        assertTrue("A secondary read happened: $polling", polling.any { it == "01051" })
+        assertEquals("Every polling request carries the count", emptyList<String>(), polling.filterNot { it.endsWith("1") })
+        assertEquals(1726.0, (live.engineRpm as SignalReading.Sample).value, 0.0)
+        assertEquals(32.0, (live.speedKmh as SignalReading.Sample).value, 0.0)
+        assertEquals(83.0, live.telemetry.readings.getValue(0x05).measurements.single().value, 0.0)
+        assertTrue(session.trace.value.any { it.description.endsWith("single-reply requests") })
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -129,7 +161,7 @@ class ElmPollingCharacterizationTest {
 
         assertTrue("Needs more readings than the trace holds, got $rpmReads", rpmReads > 150)
         assertEquals(120, trace.size)
-        listOf("ATZ", "ATI", "ATE0", "ATH0", "ATSPA6", "0100", "ATDP").forEach { command ->
+        listOf("ATZ", "ATI", "ATE0", "ATH0", "ATRV", "ATSPA6", "0100", "ATDP").forEach { command ->
             assertTrue("Handshake entry $command was evicted", trace.any { it.command == command })
         }
         val readings = trace.filter { it.stage == DiagnosticStage.POLLING && it.response != null }

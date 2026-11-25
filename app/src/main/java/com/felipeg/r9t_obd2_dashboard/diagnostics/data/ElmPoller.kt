@@ -18,6 +18,9 @@ internal class ElmPoller(
     private val recorder: SessionRecorder,
     private val publish: (DiagnosticState.Live) -> Unit,
 ) {
+    /** Whether this session's adapter accepted the single-reply count, decided by [probeCombined]. */
+    private var singleReply = false
+
     /** Exits only by exception: an exchange failure or cancellation during a pause. */
     suspend fun poll(link: EcuLink): Nothing {
         recorder.stage = DiagnosticStage.POLLING
@@ -26,16 +29,8 @@ internal class ElmPoller(
         val speedSupported = ObdPids.VEHICLE_SPEED in advertised
         val rpmSupported = ObdPids.ENGINE_RPM in advertised
 
-        // Probe once whether the ECU answers RPM and speed in a single exchange.
-        val probe = if (rpmSupported && speedSupported) readRpmAndSpeed() else null
-        val combined = probe != null &&
-            probe.first is SignalReading.Sample && probe.second is SignalReading.Sample
-        if (probe != null) {
-            recorder.record(
-                if (combined) "Combined ${ObdPids.RPM_AND_SPEED} supported · polling RPM and speed together"
-                else "Combined ${ObdPids.RPM_AND_SPEED} not supported · polling RPM and speed separately",
-            )
-        }
+        val probe = if (rpmSupported && speedSupported) probeCombined() else null
+        val combined = probe != null
         var live = if (combined) {
             DiagnosticState.Live(link.protocol, probe.first, probe.second, telemetry = TelemetrySnapshot(advertised))
         } else {
@@ -85,31 +80,58 @@ internal class ElmPoller(
         }
     }
 
+    /**
+     * Probes once whether the ECU answers RPM and speed in one exchange, first telling the adapter
+     * to expect a single reply. The first form that returns both readings is kept for the session,
+     * and the single-reply count then applies to every request. Null when neither form works.
+     */
+    private suspend fun probeCombined(): Pair<SignalReading, SignalReading>? {
+        for (singleReply in listOf(true, false)) {
+            this.singleReply = singleReply
+            val reading = readRpmAndSpeed()
+            if (reading.first is SignalReading.Sample && reading.second is SignalReading.Sample) {
+                recorder.record(
+                    "Combined ${request(ObdPids.RPM_AND_SPEED)} supported · polling RPM and speed together" +
+                        if (singleReply) " · single-reply requests" else "",
+                )
+                return reading
+            }
+        }
+        singleReply = false
+        recorder.record("Combined ${ObdPids.RPM_AND_SPEED} not supported · polling RPM and speed separately")
+        return null
+    }
+
+    /** [base] as sent this session: with the single-reply count once the adapter accepted it. */
+    private fun request(base: String): String = if (singleReply) ObdPids.singleResponse(base) else base
+
     private suspend fun readRpm(supported: Boolean): SignalReading =
-        readSignal(supported, ObdPids.request(ObdPids.ENGINE_RPM), "Engine speed", "rpm", ObdPidDecoder::engineRpm)
+        readSignal(supported, request(ObdPids.request(ObdPids.ENGINE_RPM)), "Engine speed", "rpm", ObdPidDecoder::engineRpm)
 
     private suspend fun readSpeed(supported: Boolean): SignalReading =
-        readSignal(supported, ObdPids.request(ObdPids.VEHICLE_SPEED), "Vehicle speed", "km/h") {
+        readSignal(supported, request(ObdPids.request(ObdPids.VEHICLE_SPEED)), "Vehicle speed", "km/h") {
             ObdPidDecoder.speedKmh(it)?.toDouble()
         }
 
     private suspend fun readRpmAndSpeed(): Pair<SignalReading, SignalReading> {
-        val response = channel.transmit(ObdPids.RPM_AND_SPEED, "Engine and vehicle speed")
+        val command = request(ObdPids.RPM_AND_SPEED)
+        val response = channel.transmit(command, "Engine and vehicle speed")
         val receivedAtMillis = monotonicMillis()
         val (rpm, speed) = ObdPidDecoder.rpmAndSpeed(response)
         recorder.record(
             "Engine speed · ${rpm ?: "unavailable"} rpm · Vehicle speed · ${speed ?: "unavailable"} km/h",
-            ObdPids.RPM_AND_SPEED, response,
+            command, response,
         )
         return sample(rpm, receivedAtMillis) to sample(speed, receivedAtMillis)
     }
 
     private suspend fun readTelemetry(pid: ObdTelemetryPid): TelemetryReading {
-        val response = channel.transmit(pid.command, pid.label)
+        val command = request(pid.command)
+        val response = channel.transmit(command, pid.label)
         val reading = ObdTelemetryCatalog.read(pid, response, monotonicMillis())
         val summary = reading.measurements.joinToString(", ") { "${it.label}: ${it.value} ${it.unit}" }
         val detail = summary.ifEmpty { reading.status.name.lowercase().replace('_', ' ') }
-        recorder.record("${pid.label} · $detail", pid.command, response)
+        recorder.record("${pid.label} · $detail", command, response)
         return reading
     }
 

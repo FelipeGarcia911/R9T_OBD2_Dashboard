@@ -120,7 +120,8 @@ internal class ReplayDiagnosticSession(
         fun reading(value: Double?): SignalReading =
             value?.let { SignalReading.Sample(it, receivedAtMillis) } ?: SignalReading.Unavailable
 
-        val next = when (command) {
+        // Captures may carry single-reply counts, such as 010C0D1.
+        val next = when (command?.let(ObdPids::baseRequest)) {
             "ATI" -> {
                 mutableState.value = DiagnosticState.WaitingForEcu
                 return live

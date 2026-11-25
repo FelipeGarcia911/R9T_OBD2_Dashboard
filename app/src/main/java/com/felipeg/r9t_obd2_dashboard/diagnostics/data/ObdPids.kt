@@ -20,6 +20,16 @@ internal object ObdPids {
     /** The Mode 01 request for [pids], such as `010C` or `010C0D`. */
     fun request(vararg pids: Int): String = "01" + pids.joinToString("") { hex(it) }
 
+    /**
+     * [request] telling the ELM327 to return after one ECU reply, such as `010C0D1`. Without the
+     * count the adapter keeps listening for other ECUs until its timeout before answering.
+     */
+    fun singleResponse(request: String): String = request + "1"
+
+    /** [command] without a response count, so `010C0D1` and `010C0D` read as the same request. */
+    fun baseRequest(command: String): String =
+        if (command.startsWith("01") && command.length % 2 == 1) command.dropLast(1) else command
+
     /** The prefix of a positive Mode 01 response for [pid], such as `410C`. */
     fun responsePrefix(pid: Int): String = "41" + hex(pid)
 }

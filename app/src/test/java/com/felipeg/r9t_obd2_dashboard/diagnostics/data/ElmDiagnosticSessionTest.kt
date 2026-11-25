@@ -44,9 +44,13 @@ class ElmDiagnosticSessionTest {
             assertTrue(session.trace.value.any {
                 it.description == "Vehicle speed (010D) · not advertised by the ECU" && it.command == null
             })
-            assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATSPA6", "0100", "ATDP", "010C"),
+            assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATRV", "ATSPA6", "0100", "ATDP", "010C"),
                 transport.commands)
             assertTrue(session.trace.value.any { it.command == "010C" && it.response == "41 0C 1A F8\r>" })
+            assertTrue(
+                "Battery voltage is recorded for the log",
+                session.trace.value.any { it.command == "ATRV" && it.response == "12.6V\r>" },
+            )
         } finally {
             session.stop()
         }
@@ -153,8 +157,8 @@ class ElmDiagnosticSessionTest {
                 session.state.filterIsInstance<DiagnosticState.Live>().first()
             }
             assertEquals(
-                listOf("0120", "0140", "0160", "0180", "01A0", "01A4", "01A6", "010C0D"),
-                transport.commands.takeLast(8),
+                listOf("0120", "0140", "0160", "0180", "01A0", "01A4", "01A6", "010C0D1", "010C0D"),
+                transport.commands.takeLast(9),
             )
             assertTrue(session.trace.value.any { it.command == "01A4" && it.response != null })
             assertTrue(session.trace.value.any { it.command == "01A6" && it.response != null })
@@ -253,6 +257,27 @@ class ElmDiagnosticSessionTest {
         } finally {
             session.stop()
         }
+    }
+
+    @Test
+    fun anAdapterWithoutBatteryVoltageStillConnects() = runBlocking {
+        val transport = ScriptedTransport { command ->
+            when (command) {
+                "ATRV" -> "?\r>"
+                "0100" -> "41 00 00 10 00 00\r>"
+                "ATDP" -> "ISO 15765-4\r>"
+                "010C" -> "41 0C 1A F8\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport)
+        val live = try {
+            session.start("paired-device")
+            withTimeout(2_000) { session.state.filterIsInstance<DiagnosticState.Live>().first() }
+        } finally {
+            session.stop()
+        }
+        assertEquals(1726.0, (live.engineRpm as SignalReading.Sample).value, 0.0)
     }
 
     @Test

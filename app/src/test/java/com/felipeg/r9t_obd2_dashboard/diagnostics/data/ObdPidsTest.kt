@@ -17,4 +17,13 @@ class ObdPidsTest {
         assertEquals("010C0D", ObdPids.RPM_AND_SPEED)
         assertEquals("410C", ObdPids.responsePrefix(ObdPids.ENGINE_RPM))
     }
+
+    @Test
+    fun addsAndRemovesTheSingleReplyCount() {
+        assertEquals("010C0D1", ObdPids.singleResponse(ObdPids.RPM_AND_SPEED))
+        assertEquals("010C0D", ObdPids.baseRequest("010C0D1"))
+        assertEquals("0105", ObdPids.baseRequest("01051"))
+        assertEquals("010C0D", ObdPids.baseRequest("010C0D"))
+        assertEquals("ATRV", ObdPids.baseRequest("ATRV"))
+    }
 }

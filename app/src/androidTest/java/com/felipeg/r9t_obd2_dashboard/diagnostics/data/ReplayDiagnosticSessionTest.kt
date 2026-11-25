@@ -86,6 +86,29 @@ class ReplayDiagnosticSessionTest {
         assertEquals(DiagnosticState.Disconnected, states.last())
     }
 
+    /** Captures since 2026-11-25 carry the single-reply count on every polling request. */
+    @Test
+    fun replaysSingleReplyRequests() = runBlocking {
+        val log = ElmSessionLogs(directory).start()
+        suspend fun append(event: ElmLogEvent, entry: DiagnosticTraceEntry) {
+            log.append(event, entry)
+            delay(40)
+        }
+        append(ElmLogEvent.RX, entry(DiagnosticStage.ECU, "Read active protocol", "ATDP", "ISO 15765-4 (CAN)\r>"))
+        append(
+            ElmLogEvent.RX,
+            entry(DiagnosticStage.POLLING, "Engine and vehicle speed", "010C0D1", "41 0C 12 24 0D 00\r>"),
+        )
+        append(ElmLogEvent.SESSION_END, entry(DiagnosticStage.POLLING, "Session ended"))
+        val capture = Uri.fromFile(directory.listFiles()!!.single()).toString()
+
+        val states = replay(capture) { it is DiagnosticState.Disconnected }
+
+        val live = states.filterIsInstance<DiagnosticState.Live>().last()
+        assertEquals(1_161.0, (live.engineRpm as SignalReading.Sample).value, 0.0)
+        assertEquals(0.0, (live.speedKmh as SignalReading.Sample).value, 0.0)
+    }
+
     @Test
     fun reportsACaptureThatIsNotJsonLines() = runBlocking {
         directory.mkdirs()

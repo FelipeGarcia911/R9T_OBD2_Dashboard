@@ -26,6 +26,16 @@ android {
                 packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
         }
+        // Release code and optimization, signed with the debug key so it installs over a debug build
+        // and keeps its data. For measuring real-world rendering on the phone.
+        create("profile") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+            // R8 with the release settings crashes at startup (IllegalAccessError in a Kotlin
+            // collection class); measured without it until that is fixed.
+            optimization { enable = false }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

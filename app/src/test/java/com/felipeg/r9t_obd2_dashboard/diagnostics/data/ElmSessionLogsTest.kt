@@ -142,7 +142,7 @@ class ElmSessionLogsTest {
         assertEquals("Session ended", entries.last().getString("description"))
 
         val sent = entries.filter { it.getString("event") == "TX_ATTEMPT" }.map { it.getString("command") }
-        assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATSPA6", "0100"), sent)
+        assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATRV", "ATSPA6", "0100"), sent)
         entries.forEachIndexed { index, entry ->
             if (entry.getString("event") == "RX") {
                 val previous = entries[index - 1]
