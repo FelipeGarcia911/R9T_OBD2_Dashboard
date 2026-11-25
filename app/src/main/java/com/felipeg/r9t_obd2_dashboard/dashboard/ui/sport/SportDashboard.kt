@@ -28,14 +28,14 @@ import kotlin.math.roundToInt
 
 /**
  * Round sport layout: semicircular tachometer with the speed in its center and the gear,
- * when the data source provides it, in the top-right corner. [menu] is supplied by the host.
+ * when the data source provides it, in the top-right corner. [toolbar] is supplied by the host.
  */
 @Composable
 internal fun SportDashboardPanel(
     live: DiagnosticState.Live?,
     time: String,
     status: String?,
-    menu: @Composable () -> Unit,
+    toolbar: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rpm = (live?.engineRpm as? SignalReading.Sample)?.value
@@ -47,7 +47,7 @@ internal fun SportDashboardPanel(
         modifier.fillMaxSize().background(Brush.radialGradient(listOf(SportColors.GroundCenter, SportColors.GroundEdge))),
     ) {
         if (maxWidth <= maxHeight) {
-            RotatePrompt(menu, Modifier.align(Alignment.Center))
+            RotatePrompt(toolbar, Modifier.align(Alignment.Center))
             return@BoxWithConstraints
         }
         val layout = SportDialLayout.fit(maxWidth, maxHeight)
@@ -56,16 +56,16 @@ internal fun SportDashboardPanel(
         live?.gear?.let { gear ->
             SportGearBox(gear, layout.radius, Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 16.dp))
         }
-        Box(Modifier.align(Alignment.TopStart).padding(start = 4.dp, top = 4.dp)) { menu() }
+        Box(Modifier.align(Alignment.TopStart).padding(start = 4.dp, top = 4.dp)) { toolbar() }
         StatusRow(status, time, layout, Modifier.align(Alignment.BottomCenter))
     }
 }
 
 @Composable
-private fun RotatePrompt(menu: @Composable () -> Unit, modifier: Modifier) {
+private fun RotatePrompt(toolbar: @Composable () -> Unit, modifier: Modifier) {
     Column(modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Rotate your phone to view the dashboard.", color = SportColors.White)
-        menu()
+        toolbar()
     }
 }
 

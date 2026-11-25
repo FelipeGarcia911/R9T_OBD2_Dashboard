@@ -28,8 +28,8 @@ class TachometerScaleTest {
     }
 
     @Test
-    fun layoutsToggleBetweenEachOther() {
-        assertEquals(DashboardLayout.CLASSIC, DashboardLayout.SPORT.other)
-        assertEquals(DashboardLayout.SPORT, DashboardLayout.CLASSIC.other)
+    fun selectorOffersSportFirstAndOpensOnIt() {
+        assertEquals(listOf("Sport", "Classic"), DashboardLayout.entries.map { it.title })
+        assertEquals(DashboardLayout.SPORT, DashboardLayout.DEFAULT)
     }
 }

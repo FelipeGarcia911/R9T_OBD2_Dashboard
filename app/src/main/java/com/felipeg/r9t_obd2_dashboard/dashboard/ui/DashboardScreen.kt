@@ -71,20 +71,20 @@ internal fun DashboardScreen(
     val status = state.dashboardStatus()
     val live = state as? DiagnosticState.Live
     var layout by rememberSaveable { mutableStateOf(layoutStore.load()) }
-    val switchLayout = {
-        layout = layout.other
-        layoutStore.save(layout)
+    val toolbar: @Composable () -> Unit = {
+        DashboardToolbar(
+            selected = layout,
+            onSelect = { selected ->
+                layout = selected
+                layoutStore.save(selected)
+            },
+            sourceLabel = sourceLabel,
+            onDiagnostics = onDiagnostics,
+        )
     }
     when (layout) {
-        DashboardLayout.SPORT -> SportDashboardPanel(
-            live, time, status,
-            menu = { DashboardMenu(sourceLabel, onDiagnostics, layout.other.menuLabel, switchLayout) },
-            modifier = modifier,
-        )
-        DashboardLayout.CLASSIC -> DashboardPanel(
-            live, time, status, onDiagnostics, modifier, sourceLabel,
-            switchLabel = layout.other.menuLabel, onSwitchLayout = switchLayout,
-        )
+        DashboardLayout.SPORT -> SportDashboardPanel(live, time, status, toolbar, modifier)
+        DashboardLayout.CLASSIC -> DashboardPanel(live, time, status, onDiagnostics, modifier, toolbar)
     }
 }
 
@@ -106,9 +106,7 @@ private fun DashboardPanel(
     status: String?,
     onDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
-    sourceLabel: String = "Simulation",
-    switchLabel: String? = null,
-    onSwitchLayout: () -> Unit = {},
+    toolbar: @Composable () -> Unit = {},
 ) {
     val rpm = live?.engineRpm.valueOrNull()
     val speedReading = live?.speedKmh.valueOrNull()
@@ -153,7 +151,7 @@ private fun DashboardPanel(
                 ) {
                     Text("ODOMETER  $odometer km", color = Muted,
                         style = MaterialTheme.typography.labelLarge, fontFamily = FontFamily.Monospace)
-                    DashboardMenu(sourceLabel, onDiagnostics, switchLabel, onSwitchLayout)
+                    toolbar()
                 }
                 Box(
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(1.dp)
@@ -226,37 +224,6 @@ private fun DashboardPanel(
                         fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelLarge)
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun DashboardMenu(
-    sourceLabel: String,
-    onDiagnostics: () -> Unit,
-    switchLabel: String? = null,
-    onSwitchLayout: () -> Unit = {},
-) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    Box {
-        TextButton(
-            onClick = { expanded = true },
-            modifier = Modifier.semantics { contentDescription = "Dashboard menu" },
-        ) {
-            Text("⋯", color = Muted, style = MaterialTheme.typography.titleMedium)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text(sourceLabel) }, onClick = {}, enabled = false)
-            if (switchLabel != null) {
-                DropdownMenuItem(text = { Text(switchLabel) }, onClick = {
-                    expanded = false
-                    onSwitchLayout()
-                })
-            }
-            DropdownMenuItem(text = { Text("Diagnostics") }, onClick = {
-                expanded = false
-                onDiagnostics()
-            })
         }
     }
 }

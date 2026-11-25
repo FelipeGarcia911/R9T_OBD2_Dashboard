@@ -25,7 +25,7 @@ private const val TICKS_PER_THOUSAND = 4
  */
 @Composable
 internal fun SportTachometer(thousands: Float?, layout: SportDialLayout, modifier: Modifier = Modifier) {
-    val numerals = SportTypography.rememberNumeralPaint()
+    val numerals = SportTypography.rememberNumeralPaint().apply { textAlign = Paint.Align.CENTER }
     Canvas(modifier.semantics { contentDescription = "Tachometer, zero to ten thousand RPM" }) {
         val dial = Dial(
             center = Offset(layout.centerX.toPx(), layout.centerY.toPx()),

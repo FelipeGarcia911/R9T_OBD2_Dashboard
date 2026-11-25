@@ -64,18 +64,20 @@ internal object SportTypography {
         )
     }
 
-    /** Paint for numerals drawn directly on a canvas, such as the tachometer scale. */
+    /**
+     * Paint for numerals drawn directly on a canvas, such as the tachometer scale.
+     * Left-aligned, so callers position text from its measured bounds or baseline.
+     */
     @Composable
-    fun rememberNumeralPaint(): Paint {
+    fun rememberNumeralPaint(weight: Int = NUMERAL_WEIGHT): Paint {
         val context = LocalContext.current
-        return remember(context) { numeralPaint(context) }
+        return remember(context, weight) { numeralPaint(context, weight) }
     }
 
-    private fun numeralPaint(context: Context) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textAlign = Paint.Align.CENTER
+    private fun numeralPaint(context: Context, weight: Int) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = ResourcesCompat.getFont(context, R.font.saira_italic)
             ?: Typeface.create("sans-serif-condensed", Typeface.BOLD_ITALIC)
-        fontVariationSettings = "'wght' $NUMERAL_WEIGHT"
+        fontVariationSettings = "'wght' $weight"
     }
 
     @OptIn(ExperimentalTextApi::class)

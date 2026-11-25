@@ -5,12 +5,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 
-/** Dashboard layouts the rider can switch between. */
-internal enum class DashboardLayout(val menuLabel: String) {
-    SPORT("Sport layout"),
-    CLASSIC("Classic layout");
-
-    val other: DashboardLayout get() = if (this == SPORT) CLASSIC else SPORT
+/**
+ * Displays the rider can pick from the selector, in tab order. To add a display, add an entry
+ * here and its panel in DashboardScreen.
+ */
+internal enum class DashboardLayout(val title: String) {
+    SPORT("Sport"),
+    CLASSIC("Classic");
 
     companion object {
         val DEFAULT = SPORT
