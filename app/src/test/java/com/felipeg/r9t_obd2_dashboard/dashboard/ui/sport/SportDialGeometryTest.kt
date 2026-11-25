@@ -36,4 +36,20 @@ class SportDialGeometryTest {
         val square = SportDialLayout.fit(500.dp, 480.dp)
         assertEquals(180.dp, square.radius)
     }
+
+    @Test
+    fun scaleSplitsEveryThousandThenStripesTheLimitZone() {
+        val segments = SportScaleSegments.build(limitStart = 8.5f, max = 10f)
+        val white = segments.filterNot { it.limitZone }
+        val red = segments.filter { it.limitZone }
+        assertEquals(9, white.size) // 0-1 ... 7-8, then 8-8.5
+        assertEquals(6, red.size) // 8.5-10 in 250 rpm stripes
+        val gap = SportScaleSegments.GAP / 2
+        assertEquals(gap, white.first().from, 1e-5f)
+        assertEquals(1f - gap, white.first().to, 1e-5f)
+        assertEquals(8.5f - gap, white.last().to, 1e-5f)
+        assertEquals(8.5f + gap, red.first().from, 1e-5f)
+        assertEquals(10f - gap, red.last().to, 1e-5f)
+        assertTrue(segments.zipWithNext().all { (a, b) -> a.to < b.from })
+    }
 }

@@ -40,7 +40,11 @@ internal fun TftScreenFrame(
     Column(
         modifier.fillMaxSize().background(Brush.radialGradient(listOf(TftColors.GroundCenter, TftColors.GroundEdge))),
     ) {
-        InfoBar(Modifier.height(TftBars.TopHeight), topStart, topCenter, topEnd)
+        InfoBar(
+            Modifier.height(TftBars.TopHeight)
+                .background(Brush.verticalGradient(listOf(TftColors.TopBarTop, TftColors.TopBarBottom))),
+            topStart, topCenter, topEnd,
+        )
         CyanRule()
         Box(Modifier.fillMaxWidth().weight(1f), content = content)
         InfoBar(Modifier.height(TftBars.BottomHeight), bottomStart, {}, bottomEnd)
@@ -65,7 +69,7 @@ private fun InfoBar(
 @Composable
 private fun CyanRule() {
     Box(
-        Modifier.fillMaxWidth().height(1.5.dp).background(
+        Modifier.fillMaxWidth().height(2.dp).background(
             Brush.horizontalGradient(listOf(Color.Transparent, TftColors.Cyan, TftColors.Cyan, Color.Transparent)),
         ),
     )

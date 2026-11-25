@@ -141,7 +141,7 @@ private fun GaugeScale(range: TftGaugeRange, align: TextAlign) {
     }
 }
 
-/** A small caption in cyan with its value in white, such as BATT 12.8 V. */
+/** A small white caption beside its value, as the TFT labels TOTAL 5 km: BATT 12.8 V. */
 @Composable
 internal fun TftCaptionValue(caption: String, value: String, available: Boolean, modifier: Modifier = Modifier) {
     Row(
@@ -149,7 +149,7 @@ internal fun TftCaptionValue(caption: String, value: String, available: Boolean,
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(caption.uppercase(), color = TftColors.Cyan, style = TftTypography.style(12.dp, FontWeight.Medium, italic = false),
+        Text(caption.uppercase(), color = TftColors.White, style = TftTypography.style(12.dp, FontWeight.SemiBold, italic = false),
             modifier = Modifier.padding(bottom = 3.dp))
         Text(value, color = if (available) TftColors.White else TftColors.TickDim,
             style = TftTypography.style(22.dp, FontWeight.Bold))

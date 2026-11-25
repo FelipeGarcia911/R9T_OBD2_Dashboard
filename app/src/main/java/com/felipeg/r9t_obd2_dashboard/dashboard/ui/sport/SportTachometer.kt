@@ -23,7 +23,7 @@ private const val TICKS_PER_THOUSAND = 4
 
 /**
  * Semicircular sport tachometer. [thousands] is the animated reading on the scale;
- * null hides the needle and leaves the scale unlit.
+ * null hides the needle.
  */
 @Composable
 internal fun SportTachometer(thousands: Float?, layout: SportDialLayout, modifier: Modifier = Modifier) {
@@ -33,7 +33,7 @@ internal fun SportTachometer(thousands: Float?, layout: SportDialLayout, modifie
             center = Offset(layout.centerX.toPx(), layout.centerY.toPx()),
             radius = layout.radius.toPx(),
         )
-        drawScale(dial, thousands)
+        drawScale(dial)
         drawTicks(dial)
         drawNumerals(dial, numerals)
         if (thousands != null) drawNeedle(dial, thousands)
@@ -42,30 +42,35 @@ internal fun SportTachometer(thousands: Float?, layout: SportDialLayout, modifie
 
 /** Pixel measurements of the dial, all proportional to its radius. */
 private class Dial(val center: Offset, val radius: Float) {
-    val band = radius * .055f
-    val tickOuter = radius - band / 2 - radius * .02f
+    val band = radius * .04f
+    val limitBand = radius * .08f
+    val outerEdge = radius + band / 2
+    val tickOuter = radius - band / 2 - radius * .025f
 }
 
-/** Dark track with a dim red limit zone, lit up to the current reading. */
-private fun DrawScope.drawScale(dial: Dial, thousands: Float?) {
-    val limit = TachometerScale.LIMIT_START
-    drawBand(dial, 0f, limit, TftColors.Track)
-    drawBand(dial, limit, TachometerScale.MAX, TftColors.RedTrack)
-    if (thousands == null || thousands <= 0f) return
-    drawBand(dial, 0f, minOf(thousands, limit), TftColors.White)
-    drawBand(dial, limit, thousands, TftColors.Red)
+private val ScaleSegments = SportScaleSegments.build()
+
+/**
+ * The always-lit scale band: white pieces split at every 1,000 rpm, then wider red stripes in
+ * the limit zone, flush with the outer edge. The needle, not the band, shows the reading.
+ */
+private fun DrawScope.drawScale(dial: Dial) {
+    ScaleSegments.forEach { segment ->
+        val width = if (segment.limitZone) dial.limitBand else dial.band
+        drawBand(dial, segment.from, segment.to, dial.outerEdge - width / 2, width,
+            if (segment.limitZone) TftColors.Red else TftColors.White)
+    }
 }
 
-private fun DrawScope.drawBand(dial: Dial, from: Float, to: Float, color: Color) {
-    if (to <= from) return
+private fun DrawScope.drawBand(dial: Dial, from: Float, to: Float, radius: Float, width: Float, color: Color) {
     drawArc(
         color = color,
         startAngle = SportDialAngles.of(from),
         sweepAngle = SportDialAngles.sweep(from, to),
         useCenter = false,
-        topLeft = Offset(dial.center.x - dial.radius, dial.center.y - dial.radius),
-        size = Size(dial.radius * 2, dial.radius * 2),
-        style = Stroke(width = dial.band),
+        topLeft = Offset(dial.center.x - radius, dial.center.y - radius),
+        size = Size(radius * 2, radius * 2),
+        style = Stroke(width = width),
     )
 }
 
@@ -104,10 +109,10 @@ private fun DrawScope.drawNumerals(dial: Dial, paint: Paint) = drawIntoCanvas { 
     }
 }
 
-/** A solid bar across the band, red inside the limit zone. */
+/** A white bar from inside the ticks out through the band, as at rest on the original dial. */
 private fun DrawScope.drawNeedle(dial: Dial, thousands: Float) {
-    val color = if (TachometerScale.isInLimitZone(thousands)) TftColors.Red else TftColors.White
-    val inner = SportDialAngles.point(dial.center, dial.radius - dial.band / 2 - dial.radius * .11f, thousands)
-    val outer = SportDialAngles.point(dial.center, dial.radius + dial.band / 2 + dial.radius * .015f, thousands)
-    drawLine(color, inner, outer, dial.radius * .024f, StrokeCap.Butt)
+    val inner = SportDialAngles.point(dial.center, dial.tickOuter - dial.radius * .15f, thousands)
+    val outer = SportDialAngles.point(dial.center, dial.outerEdge + dial.radius * .02f, thousands)
+    drawLine(TftColors.GroundEdge, inner, outer, dial.radius * .05f, StrokeCap.Butt)
+    drawLine(TftColors.White, inner, outer, dial.radius * .03f, StrokeCap.Butt)
 }

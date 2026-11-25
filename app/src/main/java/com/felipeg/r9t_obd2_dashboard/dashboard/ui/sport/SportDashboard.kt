@@ -135,7 +135,7 @@ private fun StatusText(status: String) = Text(
 @Composable
 private fun ClockText(time: String) = Text(
     time,
-    color = TftColors.Cyan,
+    color = TftColors.White,
     style = TftTypography.style(22.dp, FontWeight.Medium, italic = false),
 )
 

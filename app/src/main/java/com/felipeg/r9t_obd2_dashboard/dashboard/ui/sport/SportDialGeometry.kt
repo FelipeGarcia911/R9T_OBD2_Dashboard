@@ -47,3 +47,33 @@ internal data class SportDialLayout(val centerX: Dp, val centerY: Dp, val radius
         }
     }
 }
+
+/** One lit piece of the tachometer scale, in thousands of RPM. */
+internal data class ScaleSegment(val from: Float, val to: Float, val limitZone: Boolean)
+
+/**
+ * Splits the always-lit scale band like the original sport dial: white pieces separated by a
+ * small gap at every 1,000 rpm, then narrower red stripes every 250 rpm in the limit zone.
+ */
+internal object SportScaleSegments {
+    /** Gap between pieces, in thousands of RPM. */
+    const val GAP = .07f
+    private const val NORMAL_STEP = 1f
+    private const val LIMIT_STEP = .25f
+    private const val EPSILON = 1e-4f
+
+    fun build(
+        limitStart: Float = TachometerScale.LIMIT_START,
+        max: Float = TachometerScale.MAX,
+    ): List<ScaleSegment> =
+        divide(0f, limitStart, NORMAL_STEP, limitZone = false) + divide(limitStart, max, LIMIT_STEP, limitZone = true)
+
+    private fun divide(from: Float, to: Float, step: Float, limitZone: Boolean) = buildList {
+        var start = from
+        while (start < to - EPSILON) {
+            val end = minOf((kotlin.math.floor(start / step + EPSILON) + 1) * step, to)
+            add(ScaleSegment(start + GAP / 2, end - GAP / 2, limitZone))
+            start = end
+        }
+    }
+}
