@@ -21,7 +21,8 @@ import com.felipeg.r9t_obd2_dashboard.R
 
 /**
  * TFT palette: near-black ground with a slightly lighter top bar, white scale and readouts,
- * teal-cyan accents for the mode, rule and box frames, red limit zone.
+ * teal-cyan accents for the sport mode, rule and box frames, red limit zone. The classic view
+ * swaps the cyan accents for amber and fills its bar tachometer with grey segments.
  */
 internal object TftColors {
     val GroundCenter = Color(0xFF0B0D0F)
@@ -42,6 +43,14 @@ internal object TftColors {
     val ControlFill = Color(0x1F2EC1E0)
     val BarLit = Color(0xFFE6ECEF)
     val BarDim = Color(0xFF4A5559)
+    val Amber = Color(0xFFE9A43A)
+    val GearYellow = Color(0xFFF4D21C)
+    val SegmentLit = Color(0xFFD3DCDC)
+    val SegmentLitShade = Color(0xFFB3BFBE)
+    val SegmentDim = Color(0xFF353C40)
+    val SegmentDimShade = Color(0xFF2A3033)
+    val RedShade = Color(0xFFC20E18)
+    val RedTrackShade = Color(0xFF3A0A0F)
 }
 
 /**

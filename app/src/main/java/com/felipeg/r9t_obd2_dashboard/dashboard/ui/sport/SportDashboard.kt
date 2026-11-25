@@ -2,31 +2,30 @@ package com.felipeg.r9t_obd2_dashboard.dashboard.ui.sport
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.EngineVitals
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.LandscapeOnly
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.ReadingSpring
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.TachometerScale
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.VitalsFormat
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftBarGauge
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftBars
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftCaptionValue
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftClockText
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftGaugeRange
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftModeText
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftScreenFrame
-import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.EngineVitalPids
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
@@ -70,22 +69,14 @@ internal fun SportDashboardPanel(
     TftScreenFrame(
         modifier,
         topStart = { VitalReadout("Batt", VitalsFormat.volts(vitals.batteryVolts), vitals.batteryVolts) },
-        topCenter = { status?.let { StatusText(it) } },
+        topCenter = { status?.let { TftModeText(it, TftColors.Cyan) } },
         topEnd = { live?.gear?.let { SportGearBox(it, Modifier.size(GearBoxWidth, GearBoxHeight)) } },
         bottomStart = {
             VitalReadout("Air", VitalsFormat.signedTemperature(vitals.intakeAirC), vitals.intakeAirC)
         },
-        bottomEnd = { ClockText(time) },
+        bottomEnd = { TftClockText(time) },
     ) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            if (maxWidth <= maxHeight) {
-                Text(
-                    "Rotate your phone to view the dashboard.",
-                    color = TftColors.White,
-                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
-                )
-                return@BoxWithConstraints
-            }
+        LandscapeOnly {
             val layout = SportDialLayout.fit(maxWidth, maxHeight)
             SportTachometer(rpm?.let { animatedRpm }, layout, Modifier.fillMaxSize())
             SportSpeedReadout(speed?.let { animatedSpeed.roundToInt() }, layout)
@@ -122,22 +113,6 @@ private fun BoxScope.SideGauges(vitals: EngineVitals, layout: SportDialLayout) {
 @Composable
 private fun VitalReadout(caption: String, value: String, reading: Double?) =
     TftCaptionValue(caption, value, available = reading != null)
-
-/** Connection status in the top bar, where the original shows the riding mode. */
-@Composable
-private fun StatusText(status: String) = Text(
-    status.uppercase(),
-    color = TftColors.Cyan,
-    style = TftTypography.style(18.dp, FontWeight.Medium, italic = false),
-    maxLines = 1,
-)
-
-@Composable
-private fun ClockText(time: String) = Text(
-    time,
-    color = TftColors.White,
-    style = TftTypography.style(22.dp, FontWeight.Medium, italic = false),
-)
 
 @Preview(name = "Sport · cruising", widthDp = 780, heightDp = 360)
 @Composable

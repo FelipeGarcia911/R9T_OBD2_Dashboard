@@ -23,13 +23,28 @@ internal object TftBars {
 }
 
 /**
- * The TFT screen structure: a top information bar closed by a cyan rule, the main instrument
+ * How a view dresses the shared TFT frame: the accent of the rule under the top bar, and the
+ * top bar's background, or none to leave it on the ground as the classic view does.
+ */
+internal data class TftFrameStyle(val rule: Color, val topBar: Brush?) {
+    companion object {
+        val Sport = TftFrameStyle(
+            rule = TftColors.Cyan,
+            topBar = Brush.verticalGradient(listOf(TftColors.TopBarTop, TftColors.TopBarBottom)),
+        )
+        val Classic = TftFrameStyle(rule = TftColors.Amber, topBar = null)
+    }
+}
+
+/**
+ * The TFT screen structure: a top information bar closed by an accent rule, the main instrument
  * area, and a bottom information bar. Each bar has start, center and end slots. The bottom
  * center slot stays empty for the host's display selector.
  */
 @Composable
 internal fun TftScreenFrame(
     modifier: Modifier = Modifier,
+    style: TftFrameStyle = TftFrameStyle.Sport,
     topStart: @Composable BoxScope.() -> Unit = {},
     topCenter: @Composable BoxScope.() -> Unit = {},
     topEnd: @Composable BoxScope.() -> Unit = {},
@@ -40,12 +55,9 @@ internal fun TftScreenFrame(
     Column(
         modifier.fillMaxSize().background(Brush.radialGradient(listOf(TftColors.GroundCenter, TftColors.GroundEdge))),
     ) {
-        InfoBar(
-            Modifier.height(TftBars.TopHeight)
-                .background(Brush.verticalGradient(listOf(TftColors.TopBarTop, TftColors.TopBarBottom))),
-            topStart, topCenter, topEnd,
-        )
-        CyanRule()
+        val topBar = Modifier.height(TftBars.TopHeight)
+        InfoBar(style.topBar?.let { topBar.background(it) } ?: topBar, topStart, topCenter, topEnd)
+        AccentRule(style.rule)
         Box(Modifier.fillMaxWidth().weight(1f), content = content)
         InfoBar(Modifier.height(TftBars.BottomHeight), bottomStart, {}, bottomEnd)
     }
@@ -65,12 +77,12 @@ private fun InfoBar(
     }
 }
 
-/** The thin cyan line that closes the top bar, fading at both ends. */
+/** The thin accent line that closes the top bar, fading at both ends. */
 @Composable
-private fun CyanRule() {
+private fun AccentRule(color: Color) {
     Box(
         Modifier.fillMaxWidth().height(2.dp).background(
-            Brush.horizontalGradient(listOf(Color.Transparent, TftColors.Cyan, TftColors.Cyan, Color.Transparent)),
+            Brush.horizontalGradient(listOf(Color.Transparent, color, color, Color.Transparent)),
         ),
     )
 }

@@ -1,16 +1,13 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui.sport
 
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftCenteredGlyph
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
-import android.graphics.Paint
-import android.graphics.Rect
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -21,10 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -81,25 +74,6 @@ internal fun SportGearBox(gear: GearPosition, modifier: Modifier = Modifier) {
             .border(1.dp, TftColors.GearBoxOutline, shape)
             .semantics { contentDescription = if (gear == GearPosition.Neutral) "Neutral" else "Gear $label" },
     ) {
-        val paint = TftTypography.rememberNumeralPaint(weight = GEAR_WEIGHT)
-        Canvas(Modifier.fillMaxSize()) {
-            paint.textSize = size.height * .74f
-            paint.color = color.toArgb()
-            drawTextCenteredOnGlyph(label, paint)
-        }
+        TftCenteredGlyph(label, color)
     }
-}
-
-private const val GEAR_WEIGHT = 900
-
-/**
- * Centers the glyph's ink, not its text box. Font ascent, descent and the italic slant would
- * otherwise push the digit low and to one side of the box.
- */
-private fun DrawScope.drawTextCenteredOnGlyph(text: String, paint: Paint) {
-    val ink = Rect()
-    paint.getTextBounds(text, 0, text.length, ink)
-    val x = size.width / 2 - ink.exactCenterX()
-    val y = size.height / 2 - ink.exactCenterY()
-    drawIntoCanvas { it.nativeCanvas.drawText(text, x, y, paint) }
 }
