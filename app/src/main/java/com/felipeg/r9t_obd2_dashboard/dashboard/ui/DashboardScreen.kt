@@ -20,7 +20,6 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.ui.shiftlight.rememberShiftLight
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.shiftlight.rememberShiftLightSettingsStore
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.sport.SportDashboardPanel
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
-import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.rememberDashboardClock
 
 @Composable
@@ -34,17 +33,15 @@ internal fun DashboardScreen(
 ) {
     RideMode()
     val time = rememberDashboardClock()
-    val status = state.dashboardStatus()
-    val live = state as? DiagnosticState.Live
+    val readings = remember(state) { DashboardReadings.from(state) }
     var layout by rememberSaveable { mutableStateOf(layoutStore.load()) }
     var shiftLight by remember { mutableStateOf(shiftLightStore.load()) }
     var editingShiftLight by rememberSaveable { mutableStateOf(false) }
-    val rpm = (live?.engineRpm as? SignalReading.Sample)?.value
-    val shiftPhase = rememberShiftLightPhase(rpm, shiftLight)
+    val shiftPhase = rememberShiftLightPhase(readings.rpm, shiftLight)
     Box(modifier.fillMaxSize()) {
         when (layout) {
-            DashboardLayout.SPORT -> SportDashboardPanel(live, time, status)
-            DashboardLayout.CLASSIC -> ClassicDashboardPanel(live, time, status)
+            DashboardLayout.SPORT -> SportDashboardPanel(readings, time)
+            DashboardLayout.CLASSIC -> ClassicDashboardPanel(readings, time)
         }
         // Same place on every display, so the rider always finds it in one spot.
         DashboardToolbar(
@@ -75,14 +72,3 @@ internal fun DashboardScreen(
 
 /** Distance from the bottom edge to the shared toolbar. Displays keep their bottom center free. */
 internal val TOOLBAR_BOTTOM_INSET = 14.dp
-
-/** Short connection status for the dashboard footer; null while readings are live. */
-private fun DiagnosticState.dashboardStatus(): String? = when (this) {
-    DiagnosticState.Disconnected -> "Disconnected"
-    DiagnosticState.ConnectingBluetooth -> "Connecting"
-    DiagnosticState.WaitingForAdapter -> "Waiting for adapter"
-    DiagnosticState.WaitingForEcu -> "Waiting for ECU"
-    is DiagnosticState.Reconnecting -> "Link lost · Reconnecting ($attempt)…"
-    is DiagnosticState.Failed -> "Session failed"
-    is DiagnosticState.Live -> null
-}

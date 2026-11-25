@@ -11,7 +11,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.ReplayDiagnosticSession
-import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardScreen
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticScreen
@@ -56,53 +54,45 @@ private fun SimulatedDiagnosticContent(modifier: Modifier, onShowLive: () -> Uni
     }
     val state by model.uiState.collectAsStateWithLifecycle()
     val trace by model.trace.collectAsStateWithLifecycle()
-    var showDashboard by rememberSaveable { mutableStateOf(false) }
-    if (showDashboard) {
-        BackHandler { showDashboard = false }
-        DashboardScreen(
-            state.session,
-            onDiagnostics = { showDashboard = false },
-            modifier = modifier,
-            sourceLabel = if (capture == null) "Simulation" else "Capture replay",
-        )
-        return
-    }
-    Column(modifier) {
-        Row(
-            Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(onClick = {
-                model.disconnect()
-                onShowLive()
-            }) { Text("Show live diagnostics") }
-            OutlinedButton(onClick = {
-                if (state.session is DiagnosticState.Disconnected || state.session is DiagnosticState.Failed) {
-                    model.connect(adapterId)
+    val dashboardLabel = if (capture == null) "Simulation" else "Capture replay"
+    DiagnosticsOrDashboard(state.session, dashboardLabel, modifier) { openDashboard ->
+        Column(modifier) {
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                OutlinedButton(onClick = {
+                    model.disconnect()
+                    onShowLive()
+                }) { Text("Show live diagnostics") }
+                OutlinedButton(onClick = {
+                    if (state.session is DiagnosticState.Disconnected || state.session is DiagnosticState.Failed) {
+                        model.connect(adapterId)
+                    }
+                    openDashboard()
+                }) { Text("Open dashboard") }
+                if (capture == null) {
+                    OutlinedButton(onClick = {
+                        simulation.disconnect()
+                        capture = ReplayDiagnosticSession.SAMPLE_CAPTURE
+                    }) { Text("Example capture") }
+                } else {
+                    OutlinedButton(onClick = {
+                        replay.disconnect()
+                        capture = null
+                    }) { Text("Show simulation") }
                 }
-                showDashboard = true
-            }) { Text("Open dashboard") }
-            if (capture == null) {
-                OutlinedButton(onClick = {
-                    simulation.disconnect()
-                    capture = ReplayDiagnosticSession.SAMPLE_CAPTURE
-                }) { Text("Example capture") }
-            } else {
-                OutlinedButton(onClick = {
-                    replay.disconnect()
-                    capture = null
-                }) { Text("Show simulation") }
+                OutlinedButton(onClick = { openCapture.launch(arrayOf("*/*")) }) { Text("Open capture") }
             }
-            OutlinedButton(onClick = { openCapture.launch(arrayOf("*/*")) }) { Text("Open capture") }
+            DiagnosticScreen(
+                state = state,
+                trace = trace,
+                onConnect = { model.connect(adapterId) },
+                onDisconnect = model::disconnect,
+                onSimulateTimeout = if (capture == null) ({ simulation.connect("demo-timeout") }) else null,
+                sourceLabel = if (capture == null) "Simulated telemetry" else "Capture replay",
+                connectLabel = if (capture == null) "Connect" else "Play capture",
+            )
         }
-        DiagnosticScreen(
-            state = state,
-            trace = trace,
-            onConnect = { model.connect(adapterId) },
-            onDisconnect = model::disconnect,
-            onSimulateTimeout = if (capture == null) ({ simulation.connect("demo-timeout") }) else null,
-            sourceLabel = if (capture == null) "Simulated telemetry" else "Capture replay",
-            connectLabel = if (capture == null) "Connect" else "Play capture",
-        )
     }
 }
