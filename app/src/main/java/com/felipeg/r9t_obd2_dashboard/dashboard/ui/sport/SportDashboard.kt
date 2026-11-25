@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
  * Temperature scale for the side gauges. The reference bike idled at 113–124 °C engine and
  * 96–105 °C oil; the red bars are a visual cue, not the manufacturer's warning threshold.
  */
-private val TemperatureRange = TftGaugeRange(min = 40.0, max = 140.0, warnFrom = 130.0)
+private val TemperatureRange = TftGaugeRange(min = 40.0, max = 140.0, warnFrom = 130.0, bars = 12)
 private val GaugeBarsHeight = 84.dp
 private val MaxGaugeWidth = 132.dp
 private val MinGaugeWidth = 72.dp

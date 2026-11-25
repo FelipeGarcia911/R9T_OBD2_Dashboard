@@ -21,4 +21,12 @@ class TftGaugeRangeTest {
         assertFalse(range.isWarning(8))
         assertTrue(range.isWarning(9))
     }
+
+    @Test
+    fun longBarsStepInwardFromTheTopRowToTheBottomRow() {
+        assertEquals(TftStepProfile.SHORTEST, TftStepProfile.longBarShare(0, 12), 1e-6f)
+        assertEquals(1f, TftStepProfile.longBarShare(11, 12), 1e-6f)
+        val shares = (0 until 12).map { TftStepProfile.longBarShare(it, 12) }
+        assertTrue(shares.zipWithNext().all { (lower, upper) -> upper > lower })
+    }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +71,21 @@ internal data class TftGaugeRange(val min: Double, val max: Double, val warnFrom
 }
 
 /**
+ * The stepped outline of the TFT bar graph. Each row has a short marker next to the scale and a
+ * long bar whose free end steps inward from the top row to the bottom row.
+ */
+internal object TftStepProfile {
+    /** The bottom row's long bar, as a share of the top row's. */
+    const val SHORTEST = .62f
+
+    /** Share of the gauge width taken by the short marker column. */
+    const val MARKER_SHARE = .18f
+
+    /** Length of [bar]'s long bar, from 0 (bottom) to [bars] - 1 (top), as a share of the longest. */
+    fun longBarShare(bar: Int, bars: Int): Float = SHORTEST + (1 - SHORTEST) * bar / (bars - 1)
+}
+
+/**
  * The TFT's stacked-bar indicator: a label box, horizontal bars lit from the bottom, scale
  * marks on the outer side, and the current value underneath. Set [scaleOnStart] for the left
  * side of the screen so the marks face outward, as on the original.
@@ -92,7 +108,10 @@ internal fun TftBarGauge(
         TftLabelBox(label, active = value != null, Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth().height(barsHeight), verticalAlignment = Alignment.CenterVertically) {
             if (scaleOnStart) GaugeScale(range, TextAlign.End)
-            Bars(range, range.litBars(value), Modifier.weight(1f).fillMaxHeight().padding(horizontal = 6.dp))
+            SteppedBars(
+                range, range.litBars(value), anchorAtStart = scaleOnStart,
+                modifier = Modifier.weight(1f).fillMaxHeight().padding(horizontal = 6.dp),
+            )
             if (!scaleOnStart) GaugeScale(range, TextAlign.Start)
         }
         Text(
@@ -103,23 +122,36 @@ internal fun TftBarGauge(
     }
 }
 
+/**
+ * Rows lit from the bottom, anchored on the scale side ([anchorAtStart] when the scale is on the
+ * left) so the stepped edge faces the dial, mirrored on each side as on the original.
+ */
 @Composable
-private fun Bars(range: TftGaugeRange, lit: Int, modifier: Modifier) {
+private fun SteppedBars(range: TftGaugeRange, lit: Int, anchorAtStart: Boolean, modifier: Modifier) {
     Canvas(modifier) {
-        val gap = 3.dp.toPx()
-        val barHeight = (size.height - gap * (range.bars - 1)) / range.bars
+        val rowGap = 2.dp.toPx()
+        val columnGap = 4.dp.toPx()
+        val rowHeight = (size.height - rowGap * (range.bars - 1)) / range.bars
+        val marker = size.width * TftStepProfile.MARKER_SHARE
+        val longest = size.width - marker - columnGap
         for (bar in 0 until range.bars) {
-            val top = size.height - (bar + 1) * barHeight - bar * gap
-            val warning = range.isWarning(bar)
-            val color = when {
-                bar < lit && warning -> TftColors.Red
-                bar < lit -> TftColors.BarLit
-                warning -> TftColors.RedTrack
-                else -> TftColors.BarDim
-            }
-            drawRect(color, Offset(0f, top), Size(size.width, barHeight))
+            val top = size.height - (bar + 1) * rowHeight - bar * rowGap
+            val color = barColor(lit = bar < lit, warning = range.isWarning(bar))
+            val long = longest * TftStepProfile.longBarShare(bar, range.bars)
+            // Lay the row out from the anchor: marker, gap, then the long bar.
+            val markerX = if (anchorAtStart) 0f else size.width - marker
+            val longX = if (anchorAtStart) marker + columnGap else size.width - marker - columnGap - long
+            drawRect(color, Offset(markerX, top), Size(marker, rowHeight))
+            drawRect(color, Offset(longX, top), Size(long, rowHeight))
         }
     }
+}
+
+private fun barColor(lit: Boolean, warning: Boolean): Color = when {
+    lit && warning -> TftColors.Red
+    lit -> TftColors.BarLit
+    warning -> TftColors.RedTrack
+    else -> TftColors.BarDim
 }
 
 @Composable

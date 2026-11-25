@@ -40,8 +40,8 @@ internal object TftColors {
     val GearBoxOutline = Color(0xFF55636D)
     val ControlOutline = Color(0xFF3A4650)
     val ControlFill = Color(0x1F2EC1E0)
-    val BarLit = Color(0xFFC9D3D9)
-    val BarDim = Color(0xFF26313A)
+    val BarLit = Color(0xFFE6ECEF)
+    val BarDim = Color(0xFF4A5559)
 }
 
 /**
