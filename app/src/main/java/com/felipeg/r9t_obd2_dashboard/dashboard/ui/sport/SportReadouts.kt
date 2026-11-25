@@ -1,5 +1,7 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui.sport
 
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
 import android.graphics.Paint
 import android.graphics.Rect
 import androidx.compose.foundation.Canvas
@@ -47,22 +49,22 @@ internal fun SportSpeedReadout(speedKmh: Int?, layout: SportDialLayout) {
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 speedKmh?.toString() ?: "–",
-                color = SportColors.White,
-                style = SportTypography.style(radius * .40f, FontWeight.ExtraBold),
+                color = TftColors.White,
+                style = TftTypography.style(radius * .40f, FontWeight.ExtraBold),
                 maxLines = 1,
             )
             Text(
                 "km/h",
-                color = SportColors.White,
-                style = SportTypography.style(radius * .085f, FontWeight.Medium, italic = false),
+                color = TftColors.White,
+                style = TftTypography.style(radius * .085f, FontWeight.Medium, italic = false),
                 modifier = Modifier.padding(start = radius * .03f, bottom = radius * .06f),
             )
         }
-        Box(Modifier.width(radius * .62f).height(2.dp).background(SportColors.Cyan))
+        Box(Modifier.width(radius * .62f).height(2.dp).background(TftColors.Cyan))
         Text(
             "RPM x 1000",
-            color = SportColors.Label,
-            style = SportTypography.style(radius * .06f, FontWeight.Normal, italic = false),
+            color = TftColors.Label,
+            style = TftTypography.style(radius * .06f, FontWeight.Normal, italic = false),
             modifier = Modifier.padding(top = radius * .025f),
         )
     }
@@ -73,15 +75,15 @@ internal fun SportSpeedReadout(speedKmh: Int?, layout: SportDialLayout) {
 internal fun SportGearBox(gear: GearPosition, radius: Dp, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(6.dp)
     val label = gear.dashboardLabel()
-    val color = if (gear == GearPosition.Neutral) SportColors.Green else SportColors.Cyan
+    val color = if (gear == GearPosition.Neutral) TftColors.Green else TftColors.Cyan
     Box(
         modifier
             .size(radius * .30f, radius * .34f)
-            .background(Brush.verticalGradient(listOf(SportColors.GearBoxTop, SportColors.GearBoxBottom)), shape)
-            .border(1.dp, SportColors.GearBoxOutline, shape)
+            .background(Brush.verticalGradient(listOf(TftColors.GearBoxTop, TftColors.GearBoxBottom)), shape)
+            .border(1.dp, TftColors.GearBoxOutline, shape)
             .semantics { contentDescription = if (gear == GearPosition.Neutral) "Neutral" else "Gear $label" },
     ) {
-        val paint = SportTypography.rememberNumeralPaint(weight = GEAR_WEIGHT)
+        val paint = TftTypography.rememberNumeralPaint(weight = GEAR_WEIGHT)
         Canvas(Modifier.fillMaxSize()) {
             paint.textSize = size.height * .74f
             paint.color = color.toArgb()

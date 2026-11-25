@@ -1,4 +1,4 @@
-package com.felipeg.r9t_obd2_dashboard.dashboard.ui.sport
+package com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft
 
 import android.content.Context
 import android.graphics.Paint
@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.core.content.res.ResourcesCompat
 import com.felipeg.r9t_obd2_dashboard.R
 
-/** Sport TFT palette: blue-black ground, white scale, cyan accents, red limit zone. */
-internal object SportColors {
+/** TFT palette: blue-black ground, white scale, cyan accents, red limit zone. */
+internal object TftColors {
     val GroundCenter = Color(0xFF111A22)
     val GroundEdge = Color(0xFF03060A)
     val White = Color(0xFFF3F6F8)
@@ -40,7 +40,7 @@ internal object SportColors {
  * Saira (SIL Open Font License, see assets/licenses/Saira-OFL.txt) has the rounded, squared
  * italic numerals of a sport TFT. Both files are variable fonts; each weight sets its axis.
  */
-internal object SportTypography {
+internal object TftTypography {
     private const val NUMERAL_WEIGHT = 700
 
     val family = FontFamily(

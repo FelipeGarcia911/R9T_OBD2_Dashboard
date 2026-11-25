@@ -1,5 +1,7 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui.sport
 
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -44,7 +46,7 @@ internal fun SportDashboardPanel(
     val animatedSpeed by animateFloatAsState((speed ?: 0.0).toFloat(), ReadingSpring, label = "sport speed")
 
     BoxWithConstraints(
-        modifier.fillMaxSize().background(Brush.radialGradient(listOf(SportColors.GroundCenter, SportColors.GroundEdge))),
+        modifier.fillMaxSize().background(Brush.radialGradient(listOf(TftColors.GroundCenter, TftColors.GroundEdge))),
     ) {
         if (maxWidth <= maxHeight) {
             RotatePrompt(toolbar, Modifier.align(Alignment.Center))
@@ -64,7 +66,7 @@ internal fun SportDashboardPanel(
 @Composable
 private fun RotatePrompt(toolbar: @Composable () -> Unit, modifier: Modifier) {
     Column(modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Rotate your phone to view the dashboard.", color = SportColors.White)
+        Text("Rotate your phone to view the dashboard.", color = TftColors.White)
         toolbar()
     }
 }
@@ -79,14 +81,14 @@ private fun StatusRow(status: String?, time: String, layout: SportDialLayout, mo
     ) {
         Text(
             status.orEmpty(),
-            color = SportColors.White,
-            style = SportTypography.style(layout.radius * .075f, FontWeight.Medium, italic = false),
+            color = TftColors.White,
+            style = TftTypography.style(layout.radius * .075f, FontWeight.Medium, italic = false),
             modifier = Modifier.weight(1f),
         )
         Text(
             time,
-            color = SportColors.Cyan,
-            style = SportTypography.style(layout.radius * .085f, FontWeight.Medium, italic = false),
+            color = TftColors.Cyan,
+            style = TftTypography.style(layout.radius * .085f, FontWeight.Medium, italic = false),
         )
     }
 }
