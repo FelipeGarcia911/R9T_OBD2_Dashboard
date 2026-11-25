@@ -3,7 +3,8 @@ package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,11 +38,19 @@ private val GaugeTrack = Color(0xFF26383F)
 private val GaugeHotTrack = Color(0xFF51272A)
 private val GaugeOutline = Color(0xFF8A9E9B)
 
+/** Settles in ~200 ms with no overshoot. Shared by the tachometer and the speed digits. */
+internal val ReadingSpring = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = Spring.StiffnessMediumLow,
+)
+
 @Composable
 internal fun RpmGauge(rpm: Double?, modifier: Modifier = Modifier) {
     val fill by animateFloatAsState(
         targetValue = ((rpm ?: 0.0) / 1_000).toFloat().coerceIn(0f, SCALE_END),
-        animationSpec = tween(durationMillis = 90),
+        // Readings arrive every ~80 ms. A critically damped spring keeps its velocity when the
+        // target changes, so the gauge moves continuously instead of stopping between samples.
+        animationSpec = ReadingSpring,
         label = "tachometer fill",
     )
     val labels = remember {

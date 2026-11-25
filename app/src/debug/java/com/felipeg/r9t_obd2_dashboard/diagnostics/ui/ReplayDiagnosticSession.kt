@@ -113,6 +113,14 @@ internal class ReplayDiagnosticSession(
                             live = live.copy(speedKmh = reading(ObdPidDecoder.speedKmh(response)?.toDouble(), entry))
                             mutableState.value = live
                         }
+                        "010C0D" -> {
+                            val payloads = ObdPidDecoder.multiplePids(response, mapOf(0x0C to 2, 0x0D to 1))
+                            live = live.copy(
+                                engineRpm = reading(payloads[0x0C]?.let(ObdPidDecoder::engineRpm), entry),
+                                speedKmh = reading(payloads[0x0D]?.single()?.toDouble(), entry),
+                            )
+                            mutableState.value = live
+                        }
                     }
                 }
                 ElmLogEvent.ERROR -> {
@@ -120,6 +128,8 @@ internal class ReplayDiagnosticSession(
                         it.name.replace('_', ' ').equals(entry.trace.description, ignoreCase = true)
                     } ?: DiagnosticError.INVALID_RESPONSE
                     mutableState.value = DiagnosticState.Failed(entry.trace.stage, error)
+                    // A capture can continue with a reconnection; never show readings from before it.
+                    live = DiagnosticState.Live(null, SignalReading.Unavailable, SignalReading.Unavailable)
                 }
                 ElmLogEvent.SESSION_END -> if (mutableState.value !is DiagnosticState.Failed) {
                     mutableState.value = DiagnosticState.Disconnected

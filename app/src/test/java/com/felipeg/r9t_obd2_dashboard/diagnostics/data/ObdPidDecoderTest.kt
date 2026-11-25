@@ -35,4 +35,23 @@ class ObdPidDecoderTest {
         assertNull(ObdPidDecoder.speedKmh("41 0D 58 FF"))
         assertNull(ObdPidDecoder.supportedPids("41 00 80 18"))
     }
+
+    @Test
+    fun decodesCombinedResponsesInOneOrSeveralFrames() {
+        val lengths = mapOf(0x0C to 2, 0x0D to 1)
+        assertEquals(mapOf(0x0C to listOf(0x12, 0x0E), 0x0D to listOf(0x58)),
+            ObdPidDecoder.multiplePids("41 0C 12 0E 0D 58 \r\r>", lengths))
+        assertEquals(mapOf(0x0D to listOf(0), 0x0C to listOf(0x1C, 0x9E)),
+            ObdPidDecoder.multiplePids("SEARCHING...\r41 0D 00\r41 0C 1C 9E\r>", lengths))
+        assertEquals(mapOf(0x0C to listOf(0x1C, 0x9E)), ObdPidDecoder.multiplePids("41 0C 1C 9E\r>", lengths))
+    }
+
+    @Test
+    fun rejectsCombinedResponsesThatCannotBeParsed() {
+        val lengths = mapOf(0x0C to 2, 0x0D to 1)
+        assertEquals(emptyMap<Int, List<Int>>(), ObdPidDecoder.multiplePids("NO DATA\r>", lengths))
+        assertEquals(mapOf(0x0C to listOf(0x1C, 0x9E)),
+            ObdPidDecoder.multiplePids("41 0C 1C 9E 0D\r>", lengths))
+        assertEquals(emptyMap<Int, List<Int>>(), ObdPidDecoder.multiplePids("41 0C 1C ZZ 0D 00\r>", lengths))
+    }
 }

@@ -44,7 +44,7 @@ class ElmDiagnosticSessionTest {
             assertTrue(session.trace.value.any {
                 it.description == "Vehicle speed (010D) · not advertised by the ECU" && it.command == null
             })
-            assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATSP0", "0100", "ATDP", "010C"),
+            assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATSPA6", "0100", "ATDP", "010C"),
                 transport.commands)
             assertTrue(session.trace.value.any { it.command == "010C" && it.response == "41 0C 1A F8\r>" })
         } finally {
@@ -141,8 +141,7 @@ class ElmDiagnosticSessionTest {
                 "01A0" -> "41 A0 14 00 00 00\r>"
                 "01A4" -> "41 A4 01 00 00 00\r>"
                 "01A6" -> "41 A6 00 01 00 00\r>"
-                "010C" -> "41 0C 1C 9E\r>"
-                "010D" -> "41 0D 00\r>"
+                "010C0D" -> "41 0C 1C 9E 0D 00\r>"
                 "ATDP" -> "AUTO, ISO 15765-4 (CAN 11/500)\r>"
                 else -> initReply(command)
             }
@@ -154,8 +153,8 @@ class ElmDiagnosticSessionTest {
                 session.state.filterIsInstance<DiagnosticState.Live>().first()
             }
             assertEquals(
-                listOf("0120", "0140", "0160", "0180", "01A0", "01A4", "01A6", "010C", "010D"),
-                transport.commands.takeLast(9),
+                listOf("0120", "0140", "0160", "0180", "01A0", "01A4", "01A6", "010C0D"),
+                transport.commands.takeLast(8),
             )
             assertTrue(session.trace.value.any { it.command == "01A4" && it.response != null })
             assertTrue(session.trace.value.any { it.command == "01A6" && it.response != null })
@@ -174,6 +173,7 @@ class ElmDiagnosticSessionTest {
                 "0100" -> "41 00 08 18 00 00\r>"
                 "010C" -> if (++rpmRequests == 1) "41 0C 10 00\r>" else "41 0C 20 00\r>"
                 "010D" -> "41 0D 00\r>"
+                "010C0D" -> "NO DATA\r>"
                 "0105" -> awaitCancellation()
                 "ATDP" -> "ISO 15765-4\r>"
                 else -> initReply(command)
@@ -261,9 +261,75 @@ class ElmDiagnosticSessionTest {
             (1..6).map(::reconnectBackoffMillis))
     }
 
+    @Test
+    fun pollsRpmAndSpeedTogetherWhenTheEcuAcceptsTheCombinedRequest() = runBlocking {
+        var requests = 0
+        val transport = ScriptedTransport { command ->
+            when (command) {
+                "0100" -> "SEARCHING...\r41 00 00 18 00 00\r>"
+                "ATDP" -> "AUTO, ISO 15765-4 (CAN 11/500)\r>"
+                "010C0D" -> if (++requests < 3) "41 0C 1C 9E 0D 00 \r\r>" else "41 0C 20 00 0D 2A \r\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport)
+        try {
+            session.start("paired-device")
+            val latest = withTimeout(2_000) {
+                session.state.filterIsInstance<DiagnosticState.Live>().first {
+                    (it.speedKmh as? SignalReading.Sample)?.value == 42.0
+                }
+            }
+            assertEquals(2048.0, (latest.engineRpm as SignalReading.Sample).value, 0.0)
+            assertTrue(transport.commands.none { it == "010C" || it == "010D" })
+            assertTrue(session.trace.value.any { it.description.startsWith("Combined 010C0D supported") })
+        } finally {
+            session.stop()
+        }
+    }
+
+    @Test
+    fun reportsUnableToConnectAsNoEcuData() = runBlocking {
+        val transport = ScriptedTransport { command ->
+            if (command == "0100") "SEARCHING...\rUNABLE TO CONNECT\r\r>" else initReply(command)
+        }
+        val session = ElmDiagnosticSession(this, transport)
+        try {
+            session.start("paired-device")
+            val failure = withTimeout(2_000) {
+                session.state.filterIsInstance<DiagnosticState.Failed>().first()
+            }
+            assertEquals(DiagnosticState.Failed(DiagnosticStage.ECU, DiagnosticError.NO_ECU_DATA), failure)
+        } finally {
+            session.stop()
+        }
+    }
+
+    @Test
+    fun fallsBackToPlainAutomaticSearchWhenTheAdapterRejectsAPreferredProtocol() = runBlocking {
+        val transport = ScriptedTransport { command ->
+            when (command) {
+                "ATSPA6" -> "?\r\r>"
+                "0100" -> "41 00 00 10 00 00\r>"
+                "ATDP" -> "AUTO, ISO 15765-4 (CAN 11/500)\r>"
+                "010C" -> "41 0C 1A F8\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport)
+        try {
+            session.start("paired-device")
+            withTimeout(2_000) { session.state.filterIsInstance<DiagnosticState.Live>().first() }
+            assertEquals(listOf("ATSPA6", "ATSP0", "0100"),
+                transport.commands.dropWhile { it != "ATSPA6" }.take(3))
+        } finally {
+            session.stop()
+        }
+    }
+
     private fun initReply(command: String): String = when (command) {
         "ATZ", "ATI" -> "ELM327 v1.5\r>"
-        "ATE0", "ATH0", "ATSP0" -> "OK\r>"
+        "ATE0", "ATH0", "ATSPA6", "ATSP0" -> "OK\r>"
         else -> error("Unexpected command: $command")
     }
 

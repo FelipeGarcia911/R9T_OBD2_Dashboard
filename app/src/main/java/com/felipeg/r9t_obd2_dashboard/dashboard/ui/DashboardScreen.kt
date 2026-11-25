@@ -3,6 +3,7 @@ package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -95,7 +96,13 @@ private fun DashboardPanel(
     sourceLabel: String = "Simulation",
 ) {
     val rpm = live?.engineRpm.valueOrNull()
-    val speed = live?.speedKmh.valueOrNull()
+    val speedReading = live?.speedKmh.valueOrNull()
+    val animatedSpeed by animateFloatAsState(
+        targetValue = (speedReading ?: 0.0).toFloat(),
+        animationSpec = ReadingSpring,
+        label = "speed digits",
+    )
+    val speed = speedReading?.let { animatedSpeed.toDouble() }
     val distance = live?.odometerKm.valueOrNull()
     val gear = when (val position = live?.gear) {
         GearPosition.Neutral -> "N"

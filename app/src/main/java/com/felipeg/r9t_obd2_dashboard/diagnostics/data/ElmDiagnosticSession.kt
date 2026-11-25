@@ -21,9 +21,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-private const val RPM_PERIOD_MS = 120L
+/** Minimum time between primary requests. Field captures show ~75 ms per exchange. */
+private const val PRIMARY_PERIOD_MS = 50L
+
+/** Only used when the ECU rejects the combined request and speed must be polled separately. */
 private const val SPEED_PERIOD_MS = 250L
-private const val OTHER_SENSOR_PERIOD_MS = 600L
+
+/** One secondary sensor per second keeps the bus free for the dashboard readings. */
+private const val OTHER_SENSOR_PERIOD_MS = 1_000L
+
+/** Requests engine RPM and vehicle speed in one CAN exchange. */
+private const val RPM_AND_SPEED = "010C0D"
+private val RPM_AND_SPEED_LENGTHS = mapOf(0x0C to 2, 0x0D to 1)
 internal const val MAX_RECONNECTS = 10
 
 /** Errors that another attempt cannot fix without the rider's intervention. */
@@ -139,14 +148,15 @@ internal class ElmDiagnosticSession(
         if (answer(identification) == null) invalidResponse()
         configure("ATE0", "Disable echo")
         configure("ATH0", "Disable headers")
-        configure("ATSP0", "Select protocol automatically")
+        selectProtocol()
 
         stage = DiagnosticStage.ECU
         showProgress(DiagnosticState.WaitingForEcu)
         val support = exchange("0100", "Read supported PIDs")
         val supported = ObdPidDecoder.supportedPids(support) ?: run {
-            val noData = support.substringBefore('>').lineSequence()
-                .any { it.trim().equals("NO DATA", ignoreCase = true) }
+            // UNABLE TO CONNECT: the ELM327 found no protocol, usually because the ignition is off.
+            val noData = support.substringBefore('>').lineSequence().map(String::trim)
+                .any { it.equals("NO DATA", ignoreCase = true) || it.equals("UNABLE TO CONNECT", ignoreCase = true) }
             if (noData) throw ElmTransportException(DiagnosticError.NO_ECU_DATA)
             invalidResponse()
         }
@@ -172,10 +182,21 @@ internal class ElmDiagnosticSession(
         mutableState.value = DiagnosticState.Disconnected
     }
 
-    private suspend fun configure(command: String, description: String) {
-        if (exchange(command, description).substringBefore('>').lineSequence().none { it.trim() == "OK" }) {
-            invalidResponse()
+    /**
+     * Searches automatically but tries ISO 15765-4 CAN 11/500 first, the protocol the reference
+     * motorcycle uses. Adapters that reject `ATSPA6` fall back to a plain automatic search.
+     */
+    private suspend fun selectProtocol() {
+        if (!isOk(exchange("ATSPA6", "Select protocol automatically, trying CAN 11/500 first"))) {
+            configure("ATSP0", "Select protocol automatically")
         }
+    }
+
+    private fun isOk(response: String): Boolean =
+        response.substringBefore('>').lineSequence().any { it.trim() == "OK" }
+
+    private suspend fun configure(command: String, description: String) {
+        if (!isOk(exchange(command, description))) invalidResponse()
     }
 
     private suspend fun exchange(command: String, description: String): String {
@@ -218,21 +239,40 @@ internal class ElmDiagnosticSession(
         val speedSupported = 0x0D in advertised
         val rpmSupported = 0x0C in advertised
         var nextSensor = 0
-        var live = DiagnosticState.Live(
-            protocol, readRpm(rpmSupported), readSpeed(speedSupported),
-            telemetry = TelemetrySnapshot(advertised),
-        )
+
+        // Probe once whether the ECU answers RPM and speed in a single exchange.
+        val probe = if (rpmSupported && speedSupported) readRpmAndSpeed() else null
+        val combined = probe != null &&
+            probe.first is SignalReading.Sample && probe.second is SignalReading.Sample
+        if (probe != null) {
+            record(if (combined) "Combined $RPM_AND_SPEED supported · polling RPM and speed together"
+                else "Combined $RPM_AND_SPEED not supported · polling RPM and speed separately")
+        }
+        var live = if (combined) {
+            DiagnosticState.Live(protocol, probe.first, probe.second, telemetry = TelemetrySnapshot(advertised))
+        } else {
+            DiagnosticState.Live(
+                protocol, readRpm(rpmSupported), readSpeed(speedSupported),
+                telemetry = TelemetrySnapshot(advertised),
+            )
+        }
         mutableState.value = live
         reachedLive = true
         everLive = true
-        var nextSpeedAt = if (speedSupported) monotonicMillis() + SPEED_PERIOD_MS else Long.MAX_VALUE
-        var nextSensorAt = if (sensors.isNotEmpty()) monotonicMillis() else Long.MAX_VALUE
-        delay(RPM_PERIOD_MS)
+        var nextSpeedAt =
+            if (speedSupported && !combined) monotonicMillis() + SPEED_PERIOD_MS else Long.MAX_VALUE
+        var nextSensorAt =
+            if (sensors.isNotEmpty()) monotonicMillis() + OTHER_SENSOR_PERIOD_MS else Long.MAX_VALUE
+        delay(PRIMARY_PERIOD_MS)
 
         // Exits only by exception: an exchange failure or cancellation during delay.
         while (true) {
             val cycleStartedAt = monotonicMillis()
-            if (rpmSupported) {
+            if (combined) {
+                val (rpm, speed) = readRpmAndSpeed()
+                live = live.copy(engineRpm = rpm, speedKmh = speed)
+                mutableState.value = live
+            } else if (rpmSupported) {
                 live = live.copy(engineRpm = readRpm(true))
                 mutableState.value = live
             }
@@ -254,7 +294,7 @@ internal class ElmDiagnosticSession(
                 mutableState.value = live
             }
 
-            delay((RPM_PERIOD_MS - (monotonicMillis() - cycleStartedAt)).coerceAtLeast(0))
+            delay((PRIMARY_PERIOD_MS - (monotonicMillis() - cycleStartedAt)).coerceAtLeast(0))
         }
     }
 
@@ -263,6 +303,21 @@ internal class ElmDiagnosticSession(
 
     private suspend fun readSpeed(supported: Boolean): SignalReading =
         readSignal(supported, "010D", "Vehicle speed", "km/h") { ObdPidDecoder.speedKmh(it)?.toDouble() }
+
+    private suspend fun readRpmAndSpeed(): Pair<SignalReading, SignalReading> {
+        val response = transmit(RPM_AND_SPEED, "Engine and vehicle speed")
+        val receivedAtMillis = monotonicMillis()
+        val payloads = ObdPidDecoder.multiplePids(response, RPM_AND_SPEED_LENGTHS)
+        val rpm = payloads[0x0C]?.let(ObdPidDecoder::engineRpm)
+        val speed = payloads[0x0D]?.single()?.toDouble()
+        record(
+            "Engine speed · ${rpm ?: "unavailable"} rpm · Vehicle speed · ${speed ?: "unavailable"} km/h",
+            RPM_AND_SPEED, response,
+        )
+        fun sample(value: Double?) =
+            if (value == null) SignalReading.Unavailable else SignalReading.Sample(value, receivedAtMillis)
+        return sample(rpm) to sample(speed)
+    }
 
     private fun monotonicMillis(): Long = System.nanoTime() / 1_000_000
 
