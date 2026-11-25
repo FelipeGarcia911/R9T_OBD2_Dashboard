@@ -27,10 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.min
 
-private const val SCALE_END = 10f
-
-// BMW Motorrad's R nineT Scrambler rider's manual lists a maximum of 8,500 rpm.
-private const val RED_ZONE_START = 8.5f
+private const val SCALE_END = TachometerScale.MAX
+private const val RED_ZONE_START = TachometerScale.LIMIT_START
 private const val SEGMENT_COUNT = 20
 private val GaugeFill = Color(0xFFD4E3D9)
 private val GaugeHot = Color(0xFFFF3A32)
@@ -47,7 +45,7 @@ internal val ReadingSpring = spring<Float>(
 @Composable
 internal fun RpmGauge(rpm: Double?, modifier: Modifier = Modifier) {
     val fill by animateFloatAsState(
-        targetValue = ((rpm ?: 0.0) / 1_000).toFloat().coerceIn(0f, SCALE_END),
+        targetValue = TachometerScale.fromRpm(rpm),
         // Readings arrive every ~80 ms. A critically damped spring keeps its velocity when the
         // target changes, so the gauge moves continuously instead of stopping between samples.
         animationSpec = ReadingSpring,

@@ -1,14 +1,7 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.sport.SportDashboardPanel
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -71,19 +64,39 @@ internal fun DashboardScreen(
     onDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
     sourceLabel: String = "Simulation",
+    layoutStore: DashboardLayoutStore = rememberDashboardLayoutStore(),
 ) {
     RideMode()
     val time = rememberDashboardClock()
-    val status = when (state) {
-        DiagnosticState.Disconnected -> "Disconnected"
-        DiagnosticState.ConnectingBluetooth -> "Connecting"
-        DiagnosticState.WaitingForAdapter -> "Waiting for adapter"
-        DiagnosticState.WaitingForEcu -> "Waiting for ECU"
-        is DiagnosticState.Reconnecting -> "Link lost · Reconnecting (${state.attempt})…"
-        is DiagnosticState.Failed -> "Session failed"
-        is DiagnosticState.Live -> null
+    val status = state.dashboardStatus()
+    val live = state as? DiagnosticState.Live
+    var layout by rememberSaveable { mutableStateOf(layoutStore.load()) }
+    val switchLayout = {
+        layout = layout.other
+        layoutStore.save(layout)
     }
-    DashboardPanel(state as? DiagnosticState.Live, time, status, onDiagnostics, modifier, sourceLabel)
+    when (layout) {
+        DashboardLayout.SPORT -> SportDashboardPanel(
+            live, time, status,
+            menu = { DashboardMenu(sourceLabel, onDiagnostics, layout.other.menuLabel, switchLayout) },
+            modifier = modifier,
+        )
+        DashboardLayout.CLASSIC -> DashboardPanel(
+            live, time, status, onDiagnostics, modifier, sourceLabel,
+            switchLabel = layout.other.menuLabel, onSwitchLayout = switchLayout,
+        )
+    }
+}
+
+/** Short connection status for the dashboard footer; null while readings are live. */
+private fun DiagnosticState.dashboardStatus(): String? = when (this) {
+    DiagnosticState.Disconnected -> "Disconnected"
+    DiagnosticState.ConnectingBluetooth -> "Connecting"
+    DiagnosticState.WaitingForAdapter -> "Waiting for adapter"
+    DiagnosticState.WaitingForEcu -> "Waiting for ECU"
+    is DiagnosticState.Reconnecting -> "Link lost · Reconnecting ($attempt)…"
+    is DiagnosticState.Failed -> "Session failed"
+    is DiagnosticState.Live -> null
 }
 
 @Composable
@@ -94,6 +107,8 @@ private fun DashboardPanel(
     onDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
     sourceLabel: String = "Simulation",
+    switchLabel: String? = null,
+    onSwitchLayout: () -> Unit = {},
 ) {
     val rpm = live?.engineRpm.valueOrNull()
     val speedReading = live?.speedKmh.valueOrNull()
@@ -104,11 +119,7 @@ private fun DashboardPanel(
     )
     val speed = speedReading?.let { animatedSpeed.toDouble() }
     val distance = live?.odometerKm.valueOrNull()
-    val gear = when (val position = live?.gear) {
-        GearPosition.Neutral -> "N"
-        is GearPosition.Forward -> position.number.toString()
-        null -> "—"
-    }
+    val gear = live?.gear?.dashboardLabel() ?: "—"
     val odometer = distance?.let { NumberFormat.getIntegerInstance().format(it) } ?: "—"
     BoxWithConstraints(modifier.fillMaxSize().background(Background)) {
         if (maxWidth <= maxHeight) {
@@ -142,7 +153,7 @@ private fun DashboardPanel(
                 ) {
                     Text("ODOMETER  $odometer km", color = Muted,
                         style = MaterialTheme.typography.labelLarge, fontFamily = FontFamily.Monospace)
-                    DashboardMenu(sourceLabel, onDiagnostics)
+                    DashboardMenu(sourceLabel, onDiagnostics, switchLabel, onSwitchLayout)
                 }
                 Box(
                     Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(1.dp)
@@ -220,7 +231,12 @@ private fun DashboardPanel(
 }
 
 @Composable
-private fun DashboardMenu(sourceLabel: String, onDiagnostics: () -> Unit) {
+private fun DashboardMenu(
+    sourceLabel: String,
+    onDiagnostics: () -> Unit,
+    switchLabel: String? = null,
+    onSwitchLayout: () -> Unit = {},
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     Box {
         TextButton(
@@ -231,38 +247,18 @@ private fun DashboardMenu(sourceLabel: String, onDiagnostics: () -> Unit) {
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(text = { Text(sourceLabel) }, onClick = {}, enabled = false)
+            if (switchLabel != null) {
+                DropdownMenuItem(text = { Text(switchLabel) }, onClick = {
+                    expanded = false
+                    onSwitchLayout()
+                })
+            }
             DropdownMenuItem(text = { Text("Diagnostics") }, onClick = {
                 expanded = false
                 onDiagnostics()
             })
         }
     }
-}
-
-/**
- * While the dashboard is shown, keeps the screen on and hides the system bars.
- * A swipe from the edge reveals the bars temporarily. Both are restored on exit.
- */
-@Composable
-private fun RideMode() {
-    val view = LocalView.current
-    DisposableEffect(view) {
-        val window = view.context.findActivity()?.window
-        val controller = window?.let { WindowCompat.getInsetsController(it, view) }
-        view.keepScreenOn = true
-        controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller?.hide(WindowInsetsCompat.Type.systemBars())
-        onDispose {
-            view.keepScreenOn = false
-            controller?.show(WindowInsetsCompat.Type.systemBars())
-        }
-    }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }
 
 private fun SignalReading?.valueOrNull(): Double? = (this as? SignalReading.Sample)?.value
