@@ -51,6 +51,7 @@
     <string name="error_no_ecu_data">No ECU data. Check the ignition and diagnostic connector.</string>
     <string name="error_invalid_response">Invalid response</string>
     <string name="error_connection_lost">Connection lost</string>
+    <string name="error_command_blocked">A command outside the safe list was blocked. Nothing was sent to the bike.</string>
 
     <!-- Session log on the diagnostics screen -->
     <string name="log_title">OBD-II session log</string>

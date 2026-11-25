@@ -27,6 +27,9 @@ class ReconnectPolicyTest {
             DiagnosticError.PERMISSION_DENIED,
             DiagnosticError.BLUETOOTH_DISABLED,
             DiagnosticError.LOG_WRITE_FAILED,
+            // The ignition was switched off: retrying would only send requests to a sleeping bike.
+            DiagnosticError.NO_ECU_DATA,
+            DiagnosticError.COMMAND_BLOCKED,
         ).forEach { error ->
             assertFalse(error.name, policy.canRetry(error, everLive = true, reconnectsSoFar = 0))
         }

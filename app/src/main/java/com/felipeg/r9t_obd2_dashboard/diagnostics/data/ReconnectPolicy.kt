@@ -4,11 +4,16 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticError
 
 internal const val MAX_RECONNECTS = 10
 
-/** Errors that another attempt cannot fix without the rider's intervention. */
+/**
+ * Errors that another attempt cannot fix without the rider's intervention. A live ECU that goes
+ * silent means the ignition was switched off: retrying would only send requests to a sleeping bike.
+ */
 private val PERMANENT_ERRORS = setOf(
     DiagnosticError.PERMISSION_DENIED,
     DiagnosticError.BLUETOOTH_DISABLED,
     DiagnosticError.LOG_WRITE_FAILED,
+    DiagnosticError.NO_ECU_DATA,
+    DiagnosticError.COMMAND_BLOCKED,
 )
 
 /** 1 s, 2 s, 4 s, 8 s, then every 10 s. */

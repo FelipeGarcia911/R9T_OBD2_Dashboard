@@ -7,6 +7,7 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticTraceEnt
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.SignalReading
 import java.io.IOException
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -278,6 +279,34 @@ class ElmDiagnosticSessionTest {
             session.stop()
         }
         assertEquals(1726.0, (live.engineRpm as SignalReading.Sample).value, 0.0)
+    }
+
+    @Test
+    fun stopsSendingRequestsOnceTheIgnitionIsSwitchedOff() = runBlocking {
+        var rpmRequests = 0
+        val transport = ScriptedTransport { command ->
+            when (command) {
+                "0100" -> "41 00 00 10 00 00\r>"
+                "ATDP" -> "ISO 15765-4\r>"
+                // Three readings, then the ECU goes quiet as when the key is turned off.
+                "010C" -> if (++rpmRequests <= 3) "41 0C 1A F8\r>" else "NO DATA\r>"
+                else -> initReply(command)
+            }
+        }
+        val session = ElmDiagnosticSession(this, transport, reconnectDelayMillis = { 0 })
+        try {
+            session.start("paired-device")
+            val failure = withTimeout(4_000) { session.state.filterIsInstance<DiagnosticState.Failed>().first() }
+            assertEquals(DiagnosticState.Failed(DiagnosticStage.POLLING, DiagnosticError.NO_ECU_DATA), failure)
+
+            val sent = transport.commands.size
+            delay(500)
+            assertEquals("No requests after the session stopped", sent, transport.commands.size)
+            assertEquals("No reconnect to a switched-off bike", 1, transport.opens)
+            assertTrue(session.trace.value.any { it.description.contains("Stopping requests") })
+        } finally {
+            session.stop()
+        }
     }
 
     @Test

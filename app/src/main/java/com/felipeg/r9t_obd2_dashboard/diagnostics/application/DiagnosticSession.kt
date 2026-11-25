@@ -62,6 +62,9 @@ enum class DiagnosticError {
     NO_ECU_DATA,
     INVALID_RESPONSE,
     CONNECTION_LOST,
+
+    /** The app refused to send a command outside its allowlist; nothing reached the bike. */
+    COMMAND_BLOCKED,
 }
 
 sealed interface SignalReading {

@@ -12,6 +12,12 @@ internal const val SPEED_PERIOD_MS = 250L
  */
 internal const val SECONDARY_PERIOD_MS = 1_000L
 
+/**
+ * How long a live session waits without any RPM or speed reading before it treats the ECU as
+ * gone (the ignition was switched off) and stops sending requests.
+ */
+internal const val ECU_SILENCE_LIMIT_MS = 2_000L
+
 /** The request that may follow a cycle's primary read. */
 internal enum class SecondarySlot { SPEED, SENSOR, NONE }
 
@@ -43,4 +49,20 @@ internal class PollingSchedule(pollSpeedSeparately: Boolean, hasSensors: Boolean
         fun delayAfterCycle(cycleStartedAt: Long, now: Long): Long =
             (PRIMARY_PERIOD_MS - (now - cycleStartedAt)).coerceAtLeast(0)
     }
+}
+
+/**
+ * Notices when a live ECU stops answering: no RPM or speed reading for [limitMillis]. That is what
+ * switching the ignition off looks like, and the session must then stop sending requests.
+ * Times are monotonic milliseconds.
+ */
+internal class EcuSilenceWatch(startedAt: Long, private val limitMillis: Long = ECU_SILENCE_LIMIT_MS) {
+    private var lastHeardAt = startedAt
+
+    /** Call with the time of every reply that carried RPM or speed. */
+    fun heard(at: Long) {
+        lastHeardAt = at
+    }
+
+    fun isSilent(now: Long): Boolean = now - lastHeardAt >= limitMillis
 }

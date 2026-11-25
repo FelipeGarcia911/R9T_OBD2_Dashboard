@@ -188,6 +188,7 @@ private val DiagnosticError.label: Int
         DiagnosticError.NO_ECU_DATA -> R.string.error_no_ecu_data
         DiagnosticError.INVALID_RESPONSE -> R.string.error_invalid_response
         DiagnosticError.CONNECTION_LOST -> R.string.error_connection_lost
+        DiagnosticError.COMMAND_BLOCKED -> R.string.error_command_blocked
     }
 
 @Preview(showBackground = true)

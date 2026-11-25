@@ -50,3 +50,20 @@ class PollingScheduleTest {
         assertEquals(0L, PollingSchedule.delayAfterCycle(cycleStartedAt = 100, now = 175))
     }
 }
+
+class EcuSilenceWatchTest {
+    @Test
+    fun aQuietEcuIsSilentAfterTheLimit() {
+        val watch = EcuSilenceWatch(startedAt = 1_000, limitMillis = 2_000)
+        assertEquals(false, watch.isSilent(2_999))
+        assertEquals(true, watch.isSilent(3_000))
+    }
+
+    @Test
+    fun everyReadingRestartsTheWait() {
+        val watch = EcuSilenceWatch(startedAt = 0, limitMillis = 2_000)
+        watch.heard(at = 1_500)
+        assertEquals(false, watch.isSilent(3_000))
+        assertEquals(true, watch.isSilent(3_500))
+    }
+}

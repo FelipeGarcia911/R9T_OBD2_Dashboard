@@ -5,8 +5,9 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticError
 internal fun invalidResponse(): Nothing = throw ElmTransportException(DiagnosticError.INVALID_RESPONSE)
 
 /**
- * One ELM327 link seen as requests and replies. Every command is logged before it is sent;
- * [pendingCommand] names the one still waiting for its reply.
+ * One ELM327 link seen as requests and replies. Every command is checked against
+ * [ElmCommandPolicy] and logged before it is sent; [pendingCommand] names the one still waiting
+ * for its reply.
  */
 internal class ElmChannel(private val transport: ElmTransport, private val recorder: SessionRecorder) {
     var pendingCommand: String? = null
@@ -16,6 +17,7 @@ internal class ElmChannel(private val transport: ElmTransport, private val recor
 
     /** Sends [command] and returns the raw reply. The caller records it, usually with a summary. */
     suspend fun transmit(command: String, description: String): String {
+        ElmCommandPolicy.requireAllowed(command)
         pendingCommand = command
         recorder.sending(command, description)
         return transport.exchange(command).also { pendingCommand = null }

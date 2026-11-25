@@ -1,5 +1,6 @@
 package com.felipeg.r9t_obd2_dashboard.diagnostics.data
 
+import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticError
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticStage
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.EngineVitalPids
@@ -21,7 +22,10 @@ internal class ElmPoller(
     /** Whether this session's adapter accepted the single-reply count, decided by [probeCombined]. */
     private var singleReply = false
 
-    /** Exits only by exception: an exchange failure or cancellation during a pause. */
+    /**
+     * Exits only by exception: an exchange failure, cancellation during a pause, or
+     * [DiagnosticError.NO_ECU_DATA] once the ECU stops answering (see [EcuSilenceWatch]).
+     */
     suspend fun poll(link: EcuLink): Nothing {
         recorder.stage = DiagnosticStage.POLLING
         val advertised = link.advertisedPids
@@ -45,6 +49,7 @@ internal class ElmPoller(
             hasSensors = !sensors.isEmpty,
             startedAt = monotonicMillis(),
         )
+        val silence = EcuSilenceWatch(startedAt = monotonicMillis())
         delay(PRIMARY_PERIOD_MS)
 
         while (true) {
@@ -52,15 +57,18 @@ internal class ElmPoller(
             if (combined) {
                 val (rpm, speed) = readRpmAndSpeed()
                 live = live.copy(engineRpm = rpm, speedKmh = speed)
+                if (rpm is SignalReading.Sample || speed is SignalReading.Sample) silence.heard(monotonicMillis())
                 publish(live)
             } else if (rpmSupported) {
                 live = live.copy(engineRpm = readRpm(true))
+                if (live.engineRpm is SignalReading.Sample) silence.heard(monotonicMillis())
                 publish(live)
             }
 
             when (schedule.secondaryAt(monotonicMillis())) {
                 SecondarySlot.SPEED -> {
                     live = live.copy(speedKmh = readSpeed(true))
+                    if (live.speedKmh is SignalReading.Sample) silence.heard(monotonicMillis())
                     schedule.speedRead(monotonicMillis())
                     publish(live)
                 }
@@ -76,6 +84,10 @@ internal class ElmPoller(
                 SecondarySlot.NONE -> Unit
             }
 
+            if (silence.isSilent(monotonicMillis())) {
+                recorder.record("No RPM or speed for ${ECU_SILENCE_LIMIT_MS / 1_000} s · ignition off? Stopping requests")
+                throw ElmTransportException(DiagnosticError.NO_ECU_DATA)
+            }
             delay(PollingSchedule.delayAfterCycle(cycleStartedAt, monotonicMillis()))
         }
     }
