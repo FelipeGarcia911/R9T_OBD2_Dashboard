@@ -42,7 +42,7 @@ class AdapterConnectFlowTest {
         platform.shouldShowRationale = true
         flow.onPermissionResult(granted = false)
 
-        assertEquals(PERMISSION_REQUIRED_NOTICE, flow.notice)
+        assertEquals(ConnectNotice.PERMISSION_REQUIRED, flow.notice)
         assertFalse(flow.noticeOpensSettings)
         flow.confirmNotice()
         assertEquals(listOf("request"), platform.calls)
@@ -65,7 +65,7 @@ class AdapterConnectFlowTest {
 
         flow.connect()
 
-        assertEquals(PERMISSION_REQUIRED_NOTICE, flow.notice)
+        assertEquals(ConnectNotice.PERMISSION_REQUIRED, flow.notice)
         assertTrue(platform.calls.isEmpty())
         flow.confirmNotice()
         assertEquals(listOf("request"), platform.calls)
@@ -75,14 +75,14 @@ class AdapterConnectFlowTest {
     fun bluetoothProblemsPointToBluetoothSettings() {
         platform.hasPermission = true
         mapOf(
-            PairedAdapterResult.BluetoothOff to "Turn on Bluetooth in Android settings and try again.",
-            PairedAdapterResult.NonePaired to "Pair a Bluetooth Classic OBD-II adapter in Android settings first.",
-            PairedAdapterResult.BluetoothUnsupported to "This device does not support Bluetooth.",
-            PairedAdapterResult.PermissionMissing to "Allow Nearby devices access to connect to the adapter.",
-        ).forEach { (problem, message) ->
+            PairedAdapterResult.BluetoothOff to ConnectNotice.BLUETOOTH_OFF,
+            PairedAdapterResult.NonePaired to ConnectNotice.NONE_PAIRED,
+            PairedAdapterResult.BluetoothUnsupported to ConnectNotice.BLUETOOTH_UNSUPPORTED,
+            PairedAdapterResult.PermissionMissing to ConnectNotice.PERMISSION_MISSING,
+        ).forEach { (problem, notice) ->
             result = problem
             flow.connect()
-            assertEquals(message, flow.notice)
+            assertEquals(notice, flow.notice)
             assertTrue(flow.choices.isEmpty())
             assertTrue(flow.noticeOpensSettings)
         }

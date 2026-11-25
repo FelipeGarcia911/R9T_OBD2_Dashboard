@@ -1,17 +1,20 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 /**
  * Displays the rider can pick from the selector, in tab order. To add a display, add an entry
  * here and its panel in DashboardScreen.
  */
-internal enum class DashboardLayout(val title: String) {
-    SPORT("Sport"),
-    CLASSIC("Classic");
+internal enum class DashboardLayout(@StringRes val title: Int) {
+    SPORT(R.string.dashboard_display_sport),
+    CLASSIC(R.string.dashboard_display_classic);
 
     companion object {
         val DEFAULT = SPORT

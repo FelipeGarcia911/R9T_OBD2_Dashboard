@@ -14,7 +14,7 @@ internal data class DashboardReadings(
     val gear: GearPosition? = null,
     val odometerKm: Double? = null,
     val vitals: EngineVitals = EngineVitals.Unavailable,
-    val status: String? = null,
+    val status: DashboardStatus? = null,
 ) {
     companion object {
         fun from(state: DiagnosticState): DashboardReadings = when (state) {
@@ -32,13 +32,23 @@ internal data class DashboardReadings(
 
 private fun SignalReading.valueOrNull(): Double? = (this as? SignalReading.Sample)?.value
 
-/** Short connection status for the dashboard; null while readings are live. */
-private fun DiagnosticState.dashboardStatus(): String? = when (this) {
-    DiagnosticState.Disconnected -> "Disconnected"
-    DiagnosticState.ConnectingBluetooth -> "Connecting"
-    DiagnosticState.WaitingForAdapter -> "Waiting for adapter"
-    DiagnosticState.WaitingForEcu -> "Waiting for ECU"
-    is DiagnosticState.Reconnecting -> "Link lost · Reconnecting ($attempt)…"
-    is DiagnosticState.Failed -> "Session failed"
+/** The connection state a display shows in place of readings. */
+internal sealed interface DashboardStatus {
+    data object Disconnected : DashboardStatus
+    data object Connecting : DashboardStatus
+    data object WaitingForAdapter : DashboardStatus
+    data object WaitingForEcu : DashboardStatus
+    data class Reconnecting(val attempt: Int) : DashboardStatus
+    data object Failed : DashboardStatus
+}
+
+/** Null while readings are live. */
+private fun DiagnosticState.dashboardStatus(): DashboardStatus? = when (this) {
+    DiagnosticState.Disconnected -> DashboardStatus.Disconnected
+    DiagnosticState.ConnectingBluetooth -> DashboardStatus.Connecting
+    DiagnosticState.WaitingForAdapter -> DashboardStatus.WaitingForAdapter
+    DiagnosticState.WaitingForEcu -> DashboardStatus.WaitingForEcu
+    is DiagnosticState.Reconnecting -> DashboardStatus.Reconnecting(attempt)
+    is DiagnosticState.Failed -> DashboardStatus.Failed
     is DiagnosticState.Live -> null
 }

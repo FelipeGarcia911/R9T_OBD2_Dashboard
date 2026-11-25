@@ -9,18 +9,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
-/** Shows [content] in a landscape area and asks the rider to rotate the phone otherwise. */
+/** Shows [content] in a landscape area and asks the rider, in [messageColor], to rotate the phone otherwise. */
 @Composable
-internal fun LandscapeOnly(modifier: Modifier = Modifier, content: @Composable BoxWithConstraintsScope.() -> Unit) {
+internal fun LandscapeOnly(
+    messageColor: Color,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxWithConstraintsScope.() -> Unit,
+) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         if (maxWidth > maxHeight) {
             content()
         } else {
             Text(
-                "Rotate your phone to view the dashboard.",
-                color = TftColors.White,
+                stringResource(R.string.dashboard_rotate),
+                color = messageColor,
                 modifier = Modifier.align(Alignment.Center).padding(16.dp),
             )
         }

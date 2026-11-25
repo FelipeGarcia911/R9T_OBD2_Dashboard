@@ -33,6 +33,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 @Composable
 internal fun ElmLogControls(settings: LogSettings, logs: ElmSessionLogs) {
@@ -42,7 +44,7 @@ internal fun ElmLogControls(settings: LogSettings, logs: ElmSessionLogs) {
     var showSettings by remember { mutableStateOf(false) }
     var files by remember { mutableStateOf<List<SessionLogFile>?>(null) }
     var exportName by rememberSaveable { mutableStateOf<String?>(null) }
-    var notice by remember { mutableStateOf<String?>(null) }
+    var notice by remember { mutableStateOf<Int?>(null) }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         val name = exportName
         exportName = null
@@ -50,32 +52,32 @@ internal fun ElmLogControls(settings: LogSettings, logs: ElmSessionLogs) {
             scope.launch {
                 notice = try {
                     logs.export(name) { resolver.openOutputStream(uri) }
-                    "Session log exported."
+                    R.string.logs_exported
                 } catch (_: IOException) {
-                    "Could not export the session log."
+                    R.string.logs_export_failed
                 } catch (_: SecurityException) {
-                    "Could not access the export destination."
+                    R.string.logs_export_denied
                 }
             }
         }
     }
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { showSettings = true }) { Text("Settings") }
-        OutlinedButton(onClick = { scope.launch { files = logs.list() } }) { Text("Session logs") }
+        OutlinedButton(onClick = { showSettings = true }) { Text(stringResource(R.string.logs_settings)) }
+        OutlinedButton(onClick = { scope.launch { files = logs.list() } }) { Text(stringResource(R.string.logs_session_logs)) }
     }
 
     if (showSettings) {
         AlertDialog(
             onDismissRequest = { showSettings = false },
-            title = { Text("Settings") },
+            title = { Text(stringResource(R.string.logs_settings)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Detailed ELM327 logging", modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.logs_detailed_logging), modifier = Modifier.weight(1f))
                         Switch(
                             checked = enabled,
                             onCheckedChange = {
@@ -84,20 +86,20 @@ internal fun ElmLogControls(settings: LogSettings, logs: ElmSessionLogs) {
                             },
                         )
                     }
-                    Text("Applies to the next connection. Existing logs remain available for export.")
+                    Text(stringResource(R.string.logs_detailed_logging_hint))
                 }
             },
-            confirmButton = { TextButton(onClick = { showSettings = false }) { Text("Done") } },
+            confirmButton = { TextButton(onClick = { showSettings = false }) { Text(stringResource(R.string.done)) } },
         )
     }
 
     files?.let { saved ->
         AlertDialog(
             onDismissRequest = { files = null },
-            title = { Text("Export session log") },
+            title = { Text(stringResource(R.string.logs_export_title)) },
             text = {
                 Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-                    if (saved.isEmpty()) Text("No saved sessions.")
+                    if (saved.isEmpty()) Text(stringResource(R.string.logs_none_saved))
                     saved.forEach { log ->
                         TextButton(onClick = {
                             exportName = log.name
@@ -107,15 +109,15 @@ internal fun ElmLogControls(settings: LogSettings, logs: ElmSessionLogs) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { files = null }) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { files = null }) { Text(stringResource(R.string.close)) } },
         )
     }
 
     notice?.let { message ->
         AlertDialog(
             onDismissRequest = { notice = null },
-            text = { Text(message) },
-            confirmButton = { TextButton(onClick = { notice = null }) { Text("Done") } },
+            text = { Text(stringResource(message)) },
+            confirmButton = { TextButton(onClick = { notice = null }) { Text(stringResource(R.string.done)) } },
         )
     }
 }

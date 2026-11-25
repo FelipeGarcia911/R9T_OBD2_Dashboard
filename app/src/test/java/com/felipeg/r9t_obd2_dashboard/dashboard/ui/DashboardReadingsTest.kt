@@ -49,12 +49,12 @@ class DashboardReadingsTest {
     @Test
     fun aSessionThatIsNotLiveShowsOnlyItsStatus() {
         mapOf(
-            DiagnosticState.Disconnected to "Disconnected",
-            DiagnosticState.ConnectingBluetooth to "Connecting",
-            DiagnosticState.WaitingForAdapter to "Waiting for adapter",
-            DiagnosticState.WaitingForEcu to "Waiting for ECU",
-            DiagnosticState.Reconnecting(2, DiagnosticError.CONNECTION_LOST) to "Link lost · Reconnecting (2)…",
-            DiagnosticState.Failed(DiagnosticStage.ECU, DiagnosticError.TIMEOUT) to "Session failed",
+            DiagnosticState.Disconnected to DashboardStatus.Disconnected,
+            DiagnosticState.ConnectingBluetooth to DashboardStatus.Connecting,
+            DiagnosticState.WaitingForAdapter to DashboardStatus.WaitingForAdapter,
+            DiagnosticState.WaitingForEcu to DashboardStatus.WaitingForEcu,
+            DiagnosticState.Reconnecting(2, DiagnosticError.CONNECTION_LOST) to DashboardStatus.Reconnecting(2),
+            DiagnosticState.Failed(DiagnosticStage.ECU, DiagnosticError.TIMEOUT) to DashboardStatus.Failed,
         ).forEach { (state, status) ->
             assertEquals(DashboardReadings(status = status), DashboardReadings.from(state))
         }

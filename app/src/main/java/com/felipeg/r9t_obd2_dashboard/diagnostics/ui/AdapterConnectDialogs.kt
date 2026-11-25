@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.PairedAdapterSource
 
 private const val CONNECT_PERMISSION = Manifest.permission.BLUETOOTH_CONNECT
@@ -68,27 +70,39 @@ internal fun AdapterConnectDialogs(flow: AdapterConnectFlow) {
     if (flow.choices.isNotEmpty()) {
         AlertDialog(
             onDismissRequest = flow::dismissChoices,
-            title = { Text("Select paired OBD-II adapter") },
+            title = { Text(stringResource(R.string.connect_select_adapter)) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     flow.choices.forEach { adapter ->
-                        TextButton(onClick = { flow.choose(adapter) }) { Text("${adapter.name} · ${adapter.id}") }
+                        val name = adapter.name ?: stringResource(R.string.connect_unnamed_device)
+                        TextButton(onClick = { flow.choose(adapter) }) {
+                            Text(stringResource(R.string.connect_adapter_choice, name, adapter.id))
+                        }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = flow::dismissChoices) { Text("Cancel") } },
+            confirmButton = { TextButton(onClick = flow::dismissChoices) { Text(stringResource(R.string.cancel)) } },
         )
     }
-    flow.notice?.let { message ->
+    flow.notice?.let { notice ->
         AlertDialog(
             onDismissRequest = flow::dismissNotice,
-            text = { Text(message) },
+            text = { Text(stringResource(notice.message)) },
             confirmButton = {
                 TextButton(onClick = flow::confirmNotice) {
-                    Text(if (flow.noticeOpensSettings) "Open settings" else "Continue")
+                    Text(stringResource(if (flow.noticeOpensSettings) R.string.open_settings else R.string.continue_action))
                 }
             },
-            dismissButton = { TextButton(onClick = flow::dismissNotice) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = flow::dismissNotice) { Text(stringResource(R.string.cancel)) } },
         )
     }
 }
+
+private val ConnectNotice.message: Int
+    get() = when (this) {
+        ConnectNotice.PERMISSION_REQUIRED -> R.string.connect_permission_required
+        ConnectNotice.NONE_PAIRED -> R.string.connect_none_paired
+        ConnectNotice.BLUETOOTH_OFF -> R.string.connect_bluetooth_off
+        ConnectNotice.BLUETOOTH_UNSUPPORTED -> R.string.connect_bluetooth_unsupported
+        ConnectNotice.PERMISSION_MISSING -> R.string.connect_permission_missing
+    }

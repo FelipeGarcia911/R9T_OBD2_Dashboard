@@ -21,6 +21,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftLabelBox
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 /**
  * Controls shared by every display: the dashboard menu and one tab per display, styled as TFT
@@ -52,13 +54,14 @@ internal fun DisplaySelector(
     onSelect: (DashboardLayout) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val selectorDescription = stringResource(R.string.dashboard_display_selector)
     Row(
-        modifier.selectableGroup().semantics { contentDescription = "Display selector" },
+        modifier.selectableGroup().semantics { contentDescription = selectorDescription },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         DashboardLayout.entries.forEach { layout ->
             TftLabelBox(
-                layout.title,
+                stringResource(layout.title),
                 active = layout == selected,
                 modifier = Modifier.selectable(
                     selected = layout == selected,
@@ -74,22 +77,23 @@ internal fun DisplaySelector(
 @Composable
 private fun DashboardMenu(sourceLabel: String, onDiagnostics: () -> Unit, onShiftLight: () -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val menuDescription = stringResource(R.string.dashboard_menu)
     Box {
         TftLabelBox(
             "···",
             active = false,
             modifier = Modifier
                 .clickable(role = Role.Button) { expanded = true }
-                .semantics { contentDescription = "Dashboard menu" },
+                .semantics { contentDescription = menuDescription },
             textSize = 13.dp,
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(text = { Text(sourceLabel) }, onClick = {}, enabled = false)
-            DropdownMenuItem(text = { Text("Shift light") }, onClick = {
+            DropdownMenuItem(text = { Text(stringResource(R.string.dashboard_menu_shift_light)) }, onClick = {
                 expanded = false
                 onShiftLight()
             })
-            DropdownMenuItem(text = { Text("Diagnostics") }, onClick = {
+            DropdownMenuItem(text = { Text(stringResource(R.string.dashboard_menu_diagnostics)) }, onClick = {
                 expanded = false
                 onDiagnostics()
             })

@@ -31,6 +31,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 @Composable
 internal fun DiagnosticScreen(
@@ -40,8 +42,8 @@ internal fun DiagnosticScreen(
     modifier: Modifier = Modifier,
     onSimulateTimeout: (() -> Unit)? = null,
     trace: List<DiagnosticTraceEntry> = emptyList(),
-    sourceLabel: String? = if (onSimulateTimeout != null) "Simulated telemetry" else null,
-    connectLabel: String = "Connect",
+    sourceLabel: String? = null,
+    connectLabel: String = stringResource(R.string.diagnostics_connect),
 ) {
     val session = state.session
     val live = session as? DiagnosticState.Live
@@ -50,42 +52,45 @@ internal fun DiagnosticScreen(
         modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Diagnostics", style = MaterialTheme.typography.headlineLarge)
+        Text(stringResource(R.string.diagnostics_title), style = MaterialTheme.typography.headlineLarge)
         if (sourceLabel != null) {
             Text(sourceLabel, style = MaterialTheme.typography.labelLarge)
         }
-        Text("BMW R nineT Scrambler · 2023")
+        Text(stringResource(R.string.diagnostics_vehicle))
         Card(Modifier.fillMaxWidth()) {
             Column(
                 Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text("Session", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.diagnostics_session), style = MaterialTheme.typography.titleMedium)
                 Text(session.statusText())
-                Text("Protocol: ${live?.protocol ?: "Unavailable"}")
+                Text(stringResource(R.string.diagnostics_protocol, live?.protocol ?: stringResource(R.string.unavailable)))
             }
         }
-        ReadingCard("Engine speed", live?.engineRpm, "rpm", state.rpmHz)
-        ReadingCard("Vehicle speed", live?.speedKmh, "km/h", state.speedHz)
+        ReadingCard(stringResource(R.string.diagnostics_engine_speed), live?.engineRpm, "rpm", state.rpmHz)
+        ReadingCard(stringResource(R.string.diagnostics_vehicle_speed), live?.speedKmh, "km/h", state.speedHz)
         val gear = when (val position = live?.gear) {
-            GearPosition.Neutral -> "N"
+            GearPosition.Neutral -> stringResource(R.string.diagnostics_gear_neutral)
             is GearPosition.Forward -> position.number.toString()
-            null -> "Unavailable"
+            null -> stringResource(R.string.unavailable)
         }
-        ValueCard("Gear", gear)
-        ValueCard("Local time", rememberDashboardClock())
+        ValueCard(stringResource(R.string.diagnostics_gear), gear)
+        ValueCard(stringResource(R.string.diagnostics_local_time), rememberDashboardClock())
         val distance = live?.odometerKm as? SignalReading.Sample
-        ValueCard("Odometer", distance?.let { "${format(it.value)} km" } ?: "Unavailable")
+        ValueCard(
+            stringResource(R.string.diagnostics_odometer),
+            distance?.let { "${format(it.value)} km" } ?: stringResource(R.string.unavailable),
+        )
         if (canConnect) {
             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text(connectLabel) }
             if (onSimulateTimeout != null) {
                 OutlinedButton(onClick = onSimulateTimeout, modifier = Modifier.fillMaxWidth()) {
-                    Text("Simulate ECU timeout")
+                    Text(stringResource(R.string.diagnostics_simulate_timeout))
                 }
             }
         } else {
             OutlinedButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth()) {
-                Text("Disconnect")
+                Text(stringResource(R.string.diagnostics_disconnect))
             }
         }
         SessionLog(trace)
@@ -106,30 +111,32 @@ private fun ValueCard(title: String, value: String) {
 private fun SessionLog(entries: List<DiagnosticTraceEntry>) {
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    Text("OBD-II session log", style = MaterialTheme.typography.titleLarge)
-    Text("0100 · Supported PIDs   010C · Engine RPM   010D · Vehicle speed")
-    Text("RPM = (256 × A + B) / 4. Speed = A km/h. A and B are hexadecimal data bytes after the response PID.")
+    val title = stringResource(R.string.log_title)
+    val stageLabels = DiagnosticStage.entries.associateWith { stringResource(it.label) }
+    Text(title, style = MaterialTheme.typography.titleLarge)
+    Text(stringResource(R.string.log_pid_legend))
+    Text(stringResource(R.string.log_formula))
     if (entries.isEmpty()) {
-        Text("Connect to record session events.")
+        Text(stringResource(R.string.log_empty))
         return
     }
     OutlinedButton(onClick = {
-        val report = entries.joinToString("\n") { it.logText() }
-        scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("OBD-II session log", report))) }
+        val report = entries.joinToString("\n") { it.logText(stageLabels) }
+        scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(title, report))) }
     }) {
-        Text("Copy session log")
+        Text(stringResource(R.string.log_copy))
     }
-    Text("Latest 12 entries · Copy includes retained session history")
+    Text(stringResource(R.string.log_latest))
     entries.takeLast(12).asReversed().forEach { entry ->
-        Text(entry.logText(), style = MaterialTheme.typography.bodySmall)
+        Text(entry.logText(stageLabels), style = MaterialTheme.typography.bodySmall)
     }
 }
 
 private val logTime = DateTimeFormatter.ofPattern("HH:mm:ss.SSS", Locale.ROOT)
 
-private fun DiagnosticTraceEntry.logText(): String = buildString {
+private fun DiagnosticTraceEntry.logText(stageLabels: Map<DiagnosticStage, String>): String = buildString {
     append(logTime.format(Instant.ofEpochMilli(timestampMillis).atZone(ZoneId.systemDefault())))
-    append(" · ").append(stage.label()).append(" · ").append(description)
+    append(" · ").append(stageLabels.getValue(stage)).append(" · ").append(description)
     command?.let { append(" · TX ").append(it) }
     response?.let { append(" · RX ").append(it) }
 }
@@ -141,10 +148,10 @@ private fun ReadingCard(title: String, reading: SignalReading?, unit: String, ra
         Column(Modifier.padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             Text(
-                sample?.let { "${format(it.value)} $unit" } ?: "Unavailable",
+                sample?.let { "${format(it.value)} $unit" } ?: stringResource(R.string.unavailable),
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Text(rate?.let { "${format(it)} Hz" } ?: "Update rate unavailable")
+            Text(rate?.let { "${format(it)} Hz" } ?: stringResource(R.string.diagnostics_update_rate_unavailable))
         }
     }
 }
@@ -152,33 +159,36 @@ private fun ReadingCard(title: String, reading: SignalReading?, unit: String, ra
 private fun format(number: Double): String =
     String.format(Locale.US, "%.2f", number).trimEnd('0').trimEnd('.')
 
+@Composable
 private fun DiagnosticState.statusText(): String = when (this) {
-    DiagnosticState.Disconnected -> "Disconnected"
-    DiagnosticState.ConnectingBluetooth -> "Connecting over Bluetooth…"
-    DiagnosticState.WaitingForAdapter -> "Bluetooth connected · Waiting for ELM327…"
-    DiagnosticState.WaitingForEcu -> "ELM327 responded · Waiting for ECU…"
-    is DiagnosticState.Live -> "ECU responding"
-    is DiagnosticState.Reconnecting -> "${cause.label()} · Reconnecting (attempt $attempt)…"
-    is DiagnosticState.Failed -> "${stage.label()}: ${error.label()}"
+    DiagnosticState.Disconnected -> stringResource(R.string.status_disconnected)
+    DiagnosticState.ConnectingBluetooth -> stringResource(R.string.status_connecting_bluetooth)
+    DiagnosticState.WaitingForAdapter -> stringResource(R.string.status_waiting_for_adapter)
+    DiagnosticState.WaitingForEcu -> stringResource(R.string.status_waiting_for_ecu)
+    is DiagnosticState.Live -> stringResource(R.string.status_live)
+    is DiagnosticState.Reconnecting -> stringResource(R.string.status_reconnecting, stringResource(cause.label), attempt)
+    is DiagnosticState.Failed -> stringResource(R.string.status_failed, stringResource(stage.label), stringResource(error.label))
 }
 
-private fun DiagnosticStage.label(): String = when (this) {
-    DiagnosticStage.BLUETOOTH -> "Bluetooth"
-    DiagnosticStage.ADAPTER -> "ELM327"
-    DiagnosticStage.ECU -> "ECU"
-    DiagnosticStage.POLLING -> "Live readings"
-}
+private val DiagnosticStage.label: Int
+    get() = when (this) {
+        DiagnosticStage.BLUETOOTH -> R.string.stage_bluetooth
+        DiagnosticStage.ADAPTER -> R.string.stage_adapter
+        DiagnosticStage.ECU -> R.string.stage_ecu
+        DiagnosticStage.POLLING -> R.string.stage_polling
+    }
 
-private fun DiagnosticError.label(): String = when (this) {
-    DiagnosticError.PERMISSION_DENIED -> "Permission denied"
-    DiagnosticError.BLUETOOTH_DISABLED -> "Bluetooth disabled"
-    DiagnosticError.ADAPTER_UNREACHABLE -> "Adapter unreachable. Check power and close other OBD-II apps."
-    DiagnosticError.TIMEOUT -> "Response timed out"
-    DiagnosticError.LOG_WRITE_FAILED -> "Could not save the session log. Check available storage."
-    DiagnosticError.NO_ECU_DATA -> "No ECU data. Check the ignition and diagnostic connector."
-    DiagnosticError.INVALID_RESPONSE -> "Invalid response"
-    DiagnosticError.CONNECTION_LOST -> "Connection lost"
-}
+private val DiagnosticError.label: Int
+    get() = when (this) {
+        DiagnosticError.PERMISSION_DENIED -> R.string.error_permission_denied
+        DiagnosticError.BLUETOOTH_DISABLED -> R.string.error_bluetooth_disabled
+        DiagnosticError.ADAPTER_UNREACHABLE -> R.string.error_adapter_unreachable
+        DiagnosticError.TIMEOUT -> R.string.error_timeout
+        DiagnosticError.LOG_WRITE_FAILED -> R.string.error_log_write_failed
+        DiagnosticError.NO_ECU_DATA -> R.string.error_no_ecu_data
+        DiagnosticError.INVALID_RESPONSE -> R.string.error_invalid_response
+        DiagnosticError.CONNECTION_LOST -> R.string.error_connection_lost
+    }
 
 @Preview(showBackground = true)
 @Composable

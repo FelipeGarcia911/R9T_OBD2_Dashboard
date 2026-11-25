@@ -29,6 +29,9 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftCenteredGlyph
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 /** Large italic speed digits with the unit beside them, centered where the layout puts the speed. */
 @Composable
@@ -36,11 +39,13 @@ internal fun ClassicSpeedReadout(speedKmh: Int?, layout: ClassicDialLayout) {
     val unit = layout.unit
     val width = unit * 1.2f
     val center = layout.speedCenter
+    val speedDescription = speedKmh?.let { pluralStringResource(R.plurals.dashboard_speed_description, it, it) }
+        ?: stringResource(R.string.dashboard_speed_unavailable)
     Box(
         Modifier
             .offset(x = layout.left + unit * center.x - width / 2, y = unit * (center.y - .17f))
             .width(width)
-            .semantics { contentDescription = speedKmh?.let { "$it kilometers per hour" } ?: "Speed unavailable" },
+            .semantics { contentDescription = speedDescription },
         contentAlignment = Alignment.TopCenter,
     ) {
         // A spacer as wide as the unit keeps the digits centered while the unit hangs beside them.
@@ -76,10 +81,12 @@ internal fun ClassicGearIndicator(gear: GearPosition, layout: ClassicDialLayout)
     val center = layout.gearCenter
     val neutral = gear == GearPosition.Neutral
     val shape = RoundedCornerShape(4.dp)
+    val gearDescription = if (neutral) stringResource(R.string.dashboard_gear_neutral)
+    else stringResource(R.string.dashboard_gear_description, gear.dashboardLabel())
     val box = Modifier
         .offset(x = layout.left + unit * center.x - width / 2, y = unit * center.y - height / 2)
         .size(width, height)
-        .semantics { contentDescription = if (neutral) "Neutral" else "Gear ${gear.dashboardLabel()}" }
+        .semantics { contentDescription = gearDescription }
     Box(
         if (neutral) box else box
             .background(Brush.verticalGradient(listOf(TftColors.GearBoxTop, TftColors.GearBoxBottom)), shape)
@@ -98,7 +105,7 @@ internal fun ClassicGearIndicator(gear: GearPosition, layout: ClassicDialLayout)
 internal fun ClassicScaleCaption(layout: ClassicDialLayout) {
     val unit = layout.unit
     Text(
-        "RPM\nx 1000",
+        stringResource(R.string.dashboard_rpm_scale_stacked),
         color = TftColors.White,
         style = TftTypography.style(unit * .045f, FontWeight.Normal, italic = false),
         modifier = Modifier.offset(x = layout.left + unit * .39f, y = unit * .8f),

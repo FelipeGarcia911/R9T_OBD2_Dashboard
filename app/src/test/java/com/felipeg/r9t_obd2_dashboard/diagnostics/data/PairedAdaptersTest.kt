@@ -6,7 +6,7 @@ import org.junit.Test
 
 class PairedAdaptersTest {
     @Test
-    fun keepsDevicesThatCanCarryAnRfcommLinkSortedByName() {
+    fun keepsDevicesThatCanCarryAnRfcommLinkSortedByNameWithUnnamedLast() {
         val devices = listOf(
             BondedDevice("AA", "Vlink", BluetoothDevice.DEVICE_TYPE_CLASSIC),
             BondedDevice("BB", "Heart rate strap", BluetoothDevice.DEVICE_TYPE_LE),
@@ -15,7 +15,7 @@ class PairedAdaptersTest {
         )
 
         assertEquals(
-            listOf(PairedAdapter("CC", "OBDII"), PairedAdapter("DD", "Unnamed device"), PairedAdapter("AA", "Vlink")),
+            listOf(PairedAdapter("CC", "OBDII"), PairedAdapter("AA", "Vlink"), PairedAdapter("DD", null)),
             classicAdapters(devices),
         )
     }

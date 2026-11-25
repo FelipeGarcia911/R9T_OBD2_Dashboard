@@ -5,8 +5,8 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.content.Context
 
-/** A Bluetooth device paired with the phone that may be an ELM327 adapter. */
-internal data class PairedAdapter(val id: String, val name: String)
+/** A Bluetooth device paired with the phone that may be an ELM327 adapter. [name] is null when unnamed. */
+internal data class PairedAdapter(val id: String, val name: String?)
 
 /** What the phone can offer when the rider asks to connect. */
 internal sealed interface PairedAdapterResult {
@@ -26,13 +26,13 @@ internal fun interface PairedAdapterSource {
 internal data class BondedDevice(val address: String, val name: String?, val type: Int)
 
 /**
- * The devices that can carry an RFCOMM link, sorted by name. Bluetooth Low Energy-only devices
- * cannot, so they are left out.
+ * The devices that can carry an RFCOMM link, sorted by name with unnamed ones last. Bluetooth Low
+ * Energy-only devices cannot, so they are left out.
  */
 internal fun classicAdapters(devices: Collection<BondedDevice>): List<PairedAdapter> = devices
     .filter { it.type != BluetoothDevice.DEVICE_TYPE_LE }
-    .map { PairedAdapter(it.address, it.name ?: "Unnamed device") }
-    .sortedBy { it.name }
+    .map { PairedAdapter(it.address, it.name) }
+    .sortedWith(compareBy(nullsLast()) { it.name })
 
 internal class BluetoothPairedAdapters(private val context: Context) : PairedAdapterSource {
     @SuppressLint("MissingPermission") // A missing permission throws SecurityException, handled below.

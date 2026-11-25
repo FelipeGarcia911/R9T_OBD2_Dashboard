@@ -15,6 +15,8 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.DiagnosticScreen
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.ElmLogControls
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.rememberAdapterConnectFlow
 import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.rememberDiagnosticViewModel
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 /** Live diagnostics over a paired ELM327, and the dashboard fed by the same session. */
 @Composable
@@ -26,19 +28,19 @@ internal fun LiveDiagnosticContent(modifier: Modifier, onShowDemo: (() -> Unit)?
     val trace by model.trace.collectAsStateWithLifecycle()
     val connectFlow = rememberAdapterConnectFlow(activity, container.pairedAdapters, model::connect)
 
-    DiagnosticsOrDashboard(state.session, sourceLabel = "Live ELM327", modifier) { openDashboard ->
+    DiagnosticsOrDashboard(state.session, stringResource(R.string.diagnostics_source_live), modifier) { openDashboard ->
         Column(modifier) {
             ElmLogControls(container.logSettings, container.sessionLogs)
             if (onShowDemo != null) {
                 OutlinedButton(onClick = {
                     model.disconnect()
                     onShowDemo()
-                }) { Text("Show simulation") }
+                }) { Text(stringResource(R.string.show_simulation)) }
             }
             OutlinedButton(
                 enabled = state.session is DiagnosticState.Live,
                 onClick = openDashboard,
-            ) { Text("Open dashboard") }
+            ) { Text(stringResource(R.string.open_dashboard)) }
             DiagnosticScreen(
                 state = state,
                 trace = trace,

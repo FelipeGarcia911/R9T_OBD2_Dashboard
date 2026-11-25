@@ -21,6 +21,8 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight.ShiftLightPhase
 import com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight.ShiftLightRules
 import com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight.ShiftLightSettings
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 /** How the full-screen glow looks in each lit phase. */
 private class GlowStyle(val color: Color, val alpha: Float, val depth: Dp)
@@ -38,7 +40,8 @@ internal fun ShiftLightOverlay(phase: ShiftLightPhase, frequencyHz: Int, modifie
     val lit by rememberShiftLightLit(phase, frequencyHz)
     if (phase == ShiftLightPhase.OFF) return
     val style = if (phase == ShiftLightPhase.SHIFT) Shift else Approaching
-    Canvas(modifier.semantics { contentDescription = if (phase == ShiftLightPhase.SHIFT) "Shift up" else "Shift point near" }) {
+    val description = stringResource(if (phase == ShiftLightPhase.SHIFT) R.string.shift_light_shift_up else R.string.shift_light_near)
+    Canvas(modifier.semantics { contentDescription = description }) {
         if (lit) drawEdgeGlow(style)
     }
 }

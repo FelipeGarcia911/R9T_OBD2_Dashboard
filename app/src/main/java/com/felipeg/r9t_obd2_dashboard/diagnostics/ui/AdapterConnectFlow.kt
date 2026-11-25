@@ -7,8 +7,14 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.data.PairedAdapter
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.PairedAdapterResult
 import com.felipeg.r9t_obd2_dashboard.diagnostics.data.PairedAdapterSource
 
-internal const val PERMISSION_REQUIRED_NOTICE =
-    "Nearby devices access is required to list paired adapters and connect."
+/** Why the rider cannot pick an adapter yet; the UI words each one. */
+internal enum class ConnectNotice {
+    PERMISSION_REQUIRED,
+    NONE_PAIRED,
+    BLUETOOTH_OFF,
+    BLUETOOTH_UNSUPPORTED,
+    PERMISSION_MISSING,
+}
 
 /** The Android side of connecting: the Nearby devices permission and the settings screens. */
 internal interface ConnectPlatform {
@@ -33,7 +39,7 @@ internal class AdapterConnectFlow(
 ) {
     var choices by mutableStateOf<List<PairedAdapter>>(emptyList())
         private set
-    var notice by mutableStateOf<String?>(null)
+    var notice by mutableStateOf<ConnectNotice?>(null)
         private set
 
     /** Android stopped asking for the permission, so only the app settings can grant it. */
@@ -47,7 +53,7 @@ internal class AdapterConnectFlow(
             platform.hasPermission -> showAdapters()
             platform.shouldShowRationale -> {
                 permissionOnlyInSettings = false
-                notice = PERMISSION_REQUIRED_NOTICE
+                notice = ConnectNotice.PERMISSION_REQUIRED
             }
             else -> platform.requestPermission()
         }
@@ -58,7 +64,7 @@ internal class AdapterConnectFlow(
             showAdapters()
         } else {
             permissionOnlyInSettings = !platform.shouldShowRationale
-            notice = PERMISSION_REQUIRED_NOTICE
+            notice = ConnectNotice.PERMISSION_REQUIRED
         }
     }
 
@@ -92,10 +98,10 @@ internal class AdapterConnectFlow(
     }
 }
 
-private fun PairedAdapterResult.notice(): String = when (this) {
+private fun PairedAdapterResult.notice(): ConnectNotice = when (this) {
     is PairedAdapterResult.Found -> error("Adapters found")
-    PairedAdapterResult.NonePaired -> "Pair a Bluetooth Classic OBD-II adapter in Android settings first."
-    PairedAdapterResult.BluetoothOff -> "Turn on Bluetooth in Android settings and try again."
-    PairedAdapterResult.BluetoothUnsupported -> "This device does not support Bluetooth."
-    PairedAdapterResult.PermissionMissing -> "Allow Nearby devices access to connect to the adapter."
+    PairedAdapterResult.NonePaired -> ConnectNotice.NONE_PAIRED
+    PairedAdapterResult.BluetoothOff -> ConnectNotice.BLUETOOTH_OFF
+    PairedAdapterResult.BluetoothUnsupported -> ConnectNotice.BLUETOOTH_UNSUPPORTED
+    PairedAdapterResult.PermissionMissing -> ConnectNotice.PERMISSION_MISSING
 }

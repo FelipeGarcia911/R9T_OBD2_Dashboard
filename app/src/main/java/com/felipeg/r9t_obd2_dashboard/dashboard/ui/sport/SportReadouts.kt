@@ -25,17 +25,22 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.dashboardLabel
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 /** Speed in the middle of the dial: large italic digits, unit, cyan rule, and scale caption. */
 @Composable
 internal fun SportSpeedReadout(speedKmh: Int?, layout: SportDialLayout) {
     val radius = layout.radius
     val width = radius * 1.1f
+    val speedDescription = speedKmh?.let { pluralStringResource(R.plurals.dashboard_speed_description, it, it) }
+        ?: stringResource(R.string.dashboard_speed_unavailable)
     Column(
         Modifier
             .offset(x = layout.centerX - width / 2, y = layout.centerY - radius * .62f)
             .width(width)
-            .semantics { contentDescription = speedKmh?.let { "$it kilometers per hour" } ?: "Speed unavailable" },
+            .semantics { contentDescription = speedDescription },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(verticalAlignment = Alignment.Bottom) {
@@ -54,7 +59,7 @@ internal fun SportSpeedReadout(speedKmh: Int?, layout: SportDialLayout) {
         }
         Box(Modifier.width(radius * .62f).height(2.dp).background(TftColors.Cyan))
         Text(
-            "RPM x 1000",
+            stringResource(R.string.dashboard_rpm_scale),
             color = TftColors.Label,
             style = TftTypography.style(radius * .06f, FontWeight.Normal, italic = false),
             modifier = Modifier.padding(top = radius * .025f),
@@ -68,11 +73,13 @@ internal fun SportGearBox(gear: GearPosition, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(6.dp)
     val label = gear.dashboardLabel()
     val color = if (gear == GearPosition.Neutral) TftColors.Green else TftColors.Cyan
+    val gearDescription = if (gear == GearPosition.Neutral) stringResource(R.string.dashboard_gear_neutral)
+    else stringResource(R.string.dashboard_gear_description, label)
     Box(
         modifier
             .background(Brush.verticalGradient(listOf(TftColors.GearBoxTop, TftColors.GearBoxBottom)), shape)
             .border(1.dp, TftColors.GearBoxOutline, shape)
-            .semantics { contentDescription = if (gear == GearPosition.Neutral) "Neutral" else "Gear $label" },
+            .semantics { contentDescription = gearDescription },
     ) {
         TftCenteredGlyph(label, color)
     }

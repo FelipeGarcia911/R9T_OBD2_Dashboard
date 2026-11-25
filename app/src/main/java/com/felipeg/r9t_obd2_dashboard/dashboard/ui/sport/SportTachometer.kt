@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.TachometerScale
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 private const val TICKS_PER_THOUSAND = 4
 
@@ -28,7 +30,8 @@ private const val TICKS_PER_THOUSAND = 4
 @Composable
 internal fun SportTachometer(thousands: Float?, layout: SportDialLayout, modifier: Modifier = Modifier) {
     val numerals = TftTypography.rememberNumeralPaint().apply { textAlign = Paint.Align.CENTER }
-    Canvas(modifier.semantics { contentDescription = "Tachometer, zero to ten thousand RPM" }) {
+    val description = stringResource(R.string.dashboard_tachometer_description)
+    Canvas(modifier.semantics { contentDescription = description }) {
         val dial = Dial(
             center = Offset(layout.centerX.toPx(), layout.centerY.toPx()),
             radius = layout.radius.toPx(),

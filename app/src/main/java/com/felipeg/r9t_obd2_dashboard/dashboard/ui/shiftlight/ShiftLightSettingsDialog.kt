@@ -37,6 +37,8 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftLabelBox
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
 import java.text.NumberFormat
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 private val PanelShape = RoundedCornerShape(6.dp)
 
@@ -70,27 +72,30 @@ private fun ShiftLightSettingsPanel(
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        val switchDescription = stringResource(
+            if (settings.enabled) R.string.shift_light_switch_on else R.string.shift_light_switch_off,
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "SHIFT LIGHT",
+                stringResource(R.string.shift_light_title).uppercase(),
                 color = TftColors.Amber,
                 style = TftTypography.style(18.dp, FontWeight.Medium, italic = false),
                 modifier = Modifier.weight(1f),
             )
             TftLabelBox(
-                if (settings.enabled) "On" else "Off",
+                stringResource(if (settings.enabled) R.string.shift_light_on else R.string.shift_light_off),
                 active = settings.enabled,
                 modifier = Modifier
                     .clickable(role = Role.Switch) { onChange(settings.copy(enabled = !settings.enabled)) }
-                    .semantics { contentDescription = "Shift light ${if (settings.enabled) "on" else "off"}" },
+                    .semantics { contentDescription = switchDescription },
             )
         }
         val enabled = settings.enabled
-        RpmSetting("Start RPM", settings.startRpm, enabled) { onChange(settings.withStart(it)) }
-        RpmSetting("Shift RPM", settings.shiftRpm, enabled) { onChange(settings.withShift(it)) }
+        RpmSetting(stringResource(R.string.shift_light_start_rpm), settings.startRpm, enabled) { onChange(settings.withStart(it)) }
+        RpmSetting(stringResource(R.string.shift_light_shift_rpm), settings.shiftRpm, enabled) { onChange(settings.withShift(it)) }
         FrequencySetting(settings.frequencyHz, enabled) { onChange(settings.withFrequency(it)) }
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-            TftLabelBox("Done", active = true, modifier = Modifier.clickable(role = Role.Button, onClick = onDone))
+            TftLabelBox(stringResource(R.string.done), active = true, modifier = Modifier.clickable(role = Role.Button, onClick = onDone))
         }
     }
 }
@@ -114,7 +119,13 @@ private fun RpmSetting(label: String, rpm: Int, enabled: Boolean, onChange: (Int
 @Composable
 private fun FrequencySetting(hz: Int, enabled: Boolean, onChange: (Int) -> Unit) {
     val range = ShiftLightSettings.FREQUENCY_RANGE
-    SettingRow("Frequency", if (hz == 0) "Steady" else "$hz Hz", enabled, lamp = { if (enabled) PreviewLamp(hz) }) {
+    val sliderDescription = stringResource(R.string.shift_light_frequency_slider)
+    SettingRow(
+        stringResource(R.string.shift_light_frequency),
+        if (hz == 0) stringResource(R.string.shift_light_steady) else "$hz Hz",
+        enabled,
+        lamp = { if (enabled) PreviewLamp(hz) },
+    ) {
         Slider(
             value = hz.toFloat(),
             onValueChange = { onChange(it.roundToInt()) },
@@ -122,7 +133,7 @@ private fun FrequencySetting(hz: Int, enabled: Boolean, onChange: (Int) -> Unit)
             steps = range.last - range.first - 1,
             enabled = enabled,
             colors = settingSliderColors(),
-            modifier = Modifier.semantics { contentDescription = "Flashing frequency" },
+            modifier = Modifier.semantics { contentDescription = sliderDescription },
         )
     }
 }
@@ -158,10 +169,11 @@ private fun SettingRow(
 @Composable
 private fun PreviewLamp(hz: Int) {
     val lit by rememberShiftLightLit(ShiftLightPhase.SHIFT, hz)
+    val description = stringResource(R.string.shift_light_frequency_preview)
     Box(
         Modifier.size(14.dp)
             .background(if (lit) TftColors.Red else TftColors.RedTrack, CircleShape)
-            .semantics { contentDescription = "Frequency preview" },
+            .semantics { contentDescription = description },
     )
 }
 

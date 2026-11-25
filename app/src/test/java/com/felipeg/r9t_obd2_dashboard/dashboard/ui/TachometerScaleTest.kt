@@ -1,6 +1,7 @@
 package com.felipeg.r9t_obd2_dashboard.dashboard.ui
 
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
+import com.felipeg.r9t_obd2_dashboard.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -29,7 +30,11 @@ class TachometerScaleTest {
 
     @Test
     fun selectorOffersSportFirstAndOpensOnIt() {
-        assertEquals(listOf("Sport", "Classic"), DashboardLayout.entries.map { it.title })
+        assertEquals(listOf(DashboardLayout.SPORT, DashboardLayout.CLASSIC), DashboardLayout.entries)
+        assertEquals(
+            listOf(R.string.dashboard_display_sport, R.string.dashboard_display_classic),
+            DashboardLayout.entries.map { it.title },
+        )
         assertEquals(DashboardLayout.SPORT, DashboardLayout.DEFAULT)
     }
 }

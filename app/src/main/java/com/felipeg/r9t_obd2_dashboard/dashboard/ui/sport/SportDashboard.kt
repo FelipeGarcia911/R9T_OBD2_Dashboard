@@ -12,6 +12,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardReadings
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardStatus
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.text
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.EngineVitals
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.LandscapeOnly
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.VitalsFormat
@@ -25,6 +27,8 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftGaugeRange
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftModeText
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftScreenFrame
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 /**
  * Temperature scale for the side gauges: 10 °C per row, so the long markers every fourth row
@@ -56,15 +60,15 @@ internal fun SportDashboardPanel(
 
     TftScreenFrame(
         modifier,
-        topStart = { VitalReadout("Batt", VitalsFormat.volts(vitals.batteryVolts), vitals.batteryVolts) },
-        topCenter = { readings.status?.let { TftModeText(it, TftColors.Cyan) } },
+        topStart = { VitalReadout(stringResource(R.string.dashboard_battery), VitalsFormat.volts(vitals.batteryVolts), vitals.batteryVolts) },
+        topCenter = { readings.status?.let { TftModeText(it.text(), TftColors.Cyan) } },
         topEnd = { readings.gear?.let { SportGearBox(it, Modifier.size(GearBoxWidth, GearBoxHeight)) } },
         bottomStart = {
-            VitalReadout("Air", VitalsFormat.signedTemperature(vitals.intakeAirC), vitals.intakeAirC)
+            VitalReadout(stringResource(R.string.dashboard_air), VitalsFormat.signedTemperature(vitals.intakeAirC), vitals.intakeAirC)
         },
         bottomEnd = { TftClockText(time) },
     ) {
-        LandscapeOnly {
+        LandscapeOnly(TftColors.White) {
             val layout = SportDialLayout.fit(maxWidth, maxHeight)
             SportTachometer(animated.tachometer, layout, Modifier.fillMaxSize())
             SportSpeedReadout(animated.speedKmh, layout)
@@ -79,7 +83,7 @@ private fun BoxScope.SideGauges(vitals: EngineVitals, layout: SportDialLayout) {
     val gaugeWidth = min(layout.centerX - layout.radius - TftBars.SideMargin - 16.dp, MaxGaugeWidth)
     if (gaugeWidth < MinGaugeWidth) return
     TftBarGauge(
-        label = "Engine",
+        label = stringResource(R.string.dashboard_engine),
         value = vitals.engineTemperatureC,
         valueText = VitalsFormat.temperature(vitals.engineTemperatureC),
         range = TemperatureRange,
@@ -89,7 +93,7 @@ private fun BoxScope.SideGauges(vitals: EngineVitals, layout: SportDialLayout) {
         barsHeight = GaugeBarsHeight,
     )
     TftBarGauge(
-        label = "Oil",
+        label = stringResource(R.string.dashboard_oil),
         value = vitals.oilTemperatureC,
         valueText = VitalsFormat.temperature(vitals.oilTemperatureC),
         range = TemperatureRange,
@@ -118,7 +122,7 @@ private fun SportIdlePreview() = SportPreview(1_150.0, 0.0, gear = null)
 
 @Preview(name = "Sport · disconnected", widthDp = 780, heightDp = 360)
 @Composable
-private fun SportDisconnectedPreview() = SportDashboardPanel(DashboardReadings(status = "Disconnected"), "09:10")
+private fun SportDisconnectedPreview() = SportDashboardPanel(DashboardReadings(status = DashboardStatus.Disconnected), "09:10")
 
 @Composable
 private fun SportPreview(rpm: Double, speed: Double, gear: GearPosition?, engine: Double = 113.0) =

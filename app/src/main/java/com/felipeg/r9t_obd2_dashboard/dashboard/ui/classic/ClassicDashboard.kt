@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardReadings
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.DashboardStatus
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.text
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.LandscapeOnly
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.VitalsFormat
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.animateReadings
@@ -18,6 +20,8 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftModeText
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftScreenFrame
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.GearPosition
 import java.text.NumberFormat
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 /**
  * Classic layout modeled on the TFT's plain riding view: battery, odometer and connection status
@@ -39,19 +43,19 @@ internal fun ClassicDashboardPanel(
         modifier,
         style = TftFrameStyle.Classic,
         topStart = {
-            TftCaptionValue("Batt", VitalsFormat.volts(vitals.batteryVolts), available = vitals.batteryVolts != null)
+            TftCaptionValue(stringResource(R.string.dashboard_battery), VitalsFormat.volts(vitals.batteryVolts), available = vitals.batteryVolts != null)
         },
         topCenter = {
-            TftCaptionValue("Total", odometer?.let { "${NumberFormat.getIntegerInstance().format(it)} km" } ?: "-- km",
+            TftCaptionValue(stringResource(R.string.dashboard_total), odometer?.let { "${NumberFormat.getIntegerInstance().format(it)} km" } ?: "-- km",
                 available = odometer != null)
         },
-        topEnd = { readings.status?.let { TftModeText(it, TftColors.Amber) } },
+        topEnd = { readings.status?.let { TftModeText(it.text(), TftColors.Amber) } },
         bottomStart = {
-            TftCaptionValue("Air", VitalsFormat.signedTemperature(vitals.intakeAirC), available = vitals.intakeAirC != null)
+            TftCaptionValue(stringResource(R.string.dashboard_air), VitalsFormat.signedTemperature(vitals.intakeAirC), available = vitals.intakeAirC != null)
         },
         bottomEnd = { TftClockText(time) },
     ) {
-        LandscapeOnly(Modifier.padding(top = 6.dp)) {
+        LandscapeOnly(TftColors.White, Modifier.padding(top = 6.dp)) {
             val layout = ClassicDialLayout.fit(maxWidth, maxHeight)
             ClassicTachometer(animated.tachometer, layout, Modifier.fillMaxSize())
             ClassicScaleCaption(layout)
@@ -76,7 +80,7 @@ private fun ClassicIdlePreview() = ClassicPreview(1_150.0, 0.0, GearPosition.Neu
 
 @Preview(name = "Classic · disconnected", widthDp = 780, heightDp = 360)
 @Composable
-private fun ClassicDisconnectedPreview() = ClassicDashboardPanel(DashboardReadings(status = "Disconnected"), "09:10")
+private fun ClassicDisconnectedPreview() = ClassicDashboardPanel(DashboardReadings(status = DashboardStatus.Disconnected), "09:10")
 
 @Composable
 private fun ClassicPreview(rpm: Double, speed: Double, gear: GearPosition?) = ClassicDashboardPanel(

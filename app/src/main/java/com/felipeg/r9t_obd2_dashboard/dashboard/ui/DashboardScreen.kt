@@ -27,7 +27,7 @@ internal fun DashboardScreen(
     state: DiagnosticState,
     onDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
-    sourceLabel: String = "Simulation",
+    sourceLabel: String,
     layoutStore: DashboardLayoutStore = rememberDashboardLayoutStore(),
     shiftLightStore: ShiftLightSettingsStore = rememberShiftLightSettingsStore(),
 ) {

@@ -20,6 +20,8 @@ import androidx.compose.ui.semantics.semantics
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.TachometerScale
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
+import androidx.compose.ui.res.stringResource
+import com.felipeg.r9t_obd2_dashboard.R
 
 private val SegmentBounds = ClassicScaleSegments.bounds()
 
@@ -41,7 +43,8 @@ private const val NUMERAL_WEIGHT = 560
 @Composable
 internal fun ClassicTachometer(thousands: Float?, layout: ClassicDialLayout, modifier: Modifier = Modifier) {
     val numerals = TftTypography.rememberNumeralPaint(NUMERAL_WEIGHT).apply { textAlign = Paint.Align.CENTER }
-    Canvas(modifier.semantics { contentDescription = "Tachometer, zero to ten thousand RPM" }) {
+    val description = stringResource(R.string.dashboard_tachometer_description)
+    Canvas(modifier.semantics { contentDescription = description }) {
         val scale = ScaleBand(ClassicScalePath(layout.scaleEnd), unit = layout.unit.toPx())
         translate(left = layout.left.toPx()) {
             drawSegments(scale, thousands)
