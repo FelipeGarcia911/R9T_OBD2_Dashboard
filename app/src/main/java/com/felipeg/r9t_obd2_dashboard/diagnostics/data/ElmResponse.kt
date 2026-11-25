@@ -30,6 +30,9 @@ internal value class ElmResponse(private val raw: String) {
     /** The first line that answers the command, such as the adapter name or the protocol. */
     val answer: String? get() = lines.firstOrNull { it.isNotEmpty() && it !in NON_ANSWERS }
 
-    private fun hasStatus(vararg statuses: String): Boolean =
-        lines.any { line -> statuses.any { line.equals(it, ignoreCase = true) } }
+    /** Spaces are ignored: with spaces off (`ATS0`) some adapters also print `NODATA`. */
+    private fun hasStatus(vararg statuses: String): Boolean = lines.any { line ->
+        val compact = line.filterNot(Char::isWhitespace)
+        statuses.any { compact.equals(it.filterNot(Char::isWhitespace), ignoreCase = true) }
+    }
 }

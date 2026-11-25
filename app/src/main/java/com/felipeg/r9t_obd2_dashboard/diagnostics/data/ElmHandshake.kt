@@ -28,6 +28,9 @@ internal class ElmHandshake(
         if (ElmResponse(identification).answer == null) invalidResponse()
         channel.configure("ATE0", "Disable echo")
         channel.configure("ATH0", "Disable headers")
+        // Shorter replies, so each one takes less time over Bluetooth. Optional: replies are parsed
+        // with or without spaces, so an adapter that ignores it still works.
+        channel.exchange("ATS0", "Remove spaces from replies")
         // Battery voltage at the diagnostic socket. The adapter answers it even with the ignition off,
         // so session logs show the battery's state. Informational only: a clone without it still works.
         channel.exchange("ATRV", "Read battery voltage")

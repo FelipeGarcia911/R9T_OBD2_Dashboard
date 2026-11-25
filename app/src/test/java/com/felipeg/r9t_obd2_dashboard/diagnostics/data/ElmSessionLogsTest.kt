@@ -33,6 +33,7 @@ class ElmSessionLogsTest {
             ElmLogEvent.RX,
             DiagnosticTraceEntry(1_000, DiagnosticStage.ADAPTER, "Identify adapter", "ATI", "ELM327 v1.5\r>"),
         )
+        log.close()
 
         val file = directory.listFiles()!!.single()
         assertTrue(file.name, file.name.matches(Regex("elm327-\\d+-[0-9a-f-]{36}\\.jsonl")))
@@ -56,6 +57,32 @@ class ElmSessionLogsTest {
         assertEquals("ATI", second.getString("command"))
         assertEquals("ELM327 v1.5\r>", second.getString("response"))
         assertTrue(second.getLong("elapsedMs") >= first.getLong("elapsedMs"))
+    }
+
+    @Test
+    fun keepsEveryRecordInOrderWhenAppendsArriveFasterThanTheDisk() = runBlocking {
+        val directory = File(folder.root, "burst")
+        val log = ElmSessionLogs(directory).start()
+        repeat(2_000) { index ->
+            log.append(ElmLogEvent.RX, DiagnosticTraceEntry(index.toLong(), DiagnosticStage.POLLING, "reading $index"))
+        }
+        log.close()
+
+        val lines = directory.listFiles()!!.single().readLines().map(::JSONObject)
+        assertEquals((0 until 2_000).map { "reading $it" }, lines.map { it.getString("description") })
+        val elapsed = lines.map { it.getLong("elapsedMs") }
+        assertEquals("Elapsed time never goes back", elapsed.sorted(), elapsed)
+    }
+
+    @Test
+    fun appendsAfterCloseAreIgnored() = runBlocking {
+        val directory = File(folder.root, "closed")
+        val log = ElmSessionLogs(directory).start()
+        log.append(ElmLogEvent.EVENT, DiagnosticTraceEntry(0, DiagnosticStage.BLUETOOTH, "Opening"))
+        log.close()
+        log.append(ElmLogEvent.EVENT, DiagnosticTraceEntry(1, DiagnosticStage.BLUETOOTH, "Too late"))
+
+        assertEquals(1, directory.listFiles()!!.single().readLines().size)
     }
 
     @Test
@@ -142,7 +169,7 @@ class ElmSessionLogsTest {
         assertEquals("Session ended", entries.last().getString("description"))
 
         val sent = entries.filter { it.getString("event") == "TX_ATTEMPT" }.map { it.getString("command") }
-        assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATRV", "ATSPA6", "0100"), sent)
+        assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATS0", "ATRV", "ATSPA6", "0100"), sent)
         entries.forEachIndexed { index, entry ->
             if (entry.getString("event") == "RX") {
                 val previous = entries[index - 1]

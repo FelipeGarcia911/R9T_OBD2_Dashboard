@@ -5,14 +5,15 @@ import org.junit.Test
 
 class PollingScheduleTest {
     @Test
-    fun combinedPollingOnlyLeavesRoomForOneSensorPerSecond() {
+    fun combinedPollingOnlyLeavesRoomForOneSensorEveryTwoSeconds() {
         val schedule = PollingSchedule(pollSpeedSeparately = false, hasSensors = true, startedAt = 0)
 
-        assertEquals(SecondarySlot.NONE, schedule.secondaryAt(999))
-        assertEquals(SecondarySlot.SENSOR, schedule.secondaryAt(1_000))
-        schedule.sensorRead(at = 1_075)
-        assertEquals(SecondarySlot.NONE, schedule.secondaryAt(2_074))
-        assertEquals(SecondarySlot.SENSOR, schedule.secondaryAt(2_075))
+        assertEquals(2_000L, SECONDARY_PERIOD_MS)
+        assertEquals(SecondarySlot.NONE, schedule.secondaryAt(1_999))
+        assertEquals(SecondarySlot.SENSOR, schedule.secondaryAt(2_000))
+        schedule.sensorRead(at = 2_075)
+        assertEquals(SecondarySlot.NONE, schedule.secondaryAt(4_074))
+        assertEquals(SecondarySlot.SENSOR, schedule.secondaryAt(4_075))
     }
 
     @Test
@@ -21,19 +22,19 @@ class PollingScheduleTest {
 
         assertEquals(SecondarySlot.NONE, schedule.secondaryAt(249))
         assertEquals(SecondarySlot.SPEED, schedule.secondaryAt(250))
-        schedule.speedRead(at = 750)
-        // Speed is due at 1000 together with the first sensor read: speed goes first.
-        assertEquals(SecondarySlot.SPEED, schedule.secondaryAt(1_000))
-        schedule.speedRead(at = 1_050)
-        assertEquals(SecondarySlot.SENSOR, schedule.secondaryAt(1_100))
+        schedule.speedRead(at = 1_750)
+        // Speed is due at 2000 together with the first sensor read: speed goes first.
+        assertEquals(SecondarySlot.SPEED, schedule.secondaryAt(2_000))
+        schedule.speedRead(at = 2_050)
+        assertEquals(SecondarySlot.SENSOR, schedule.secondaryAt(2_100))
     }
 
     @Test
     fun aSensorThatIsOverdueWaitsForAnEarlierSpeedRead() {
         val schedule = PollingSchedule(pollSpeedSeparately = true, hasSensors = true, startedAt = 0)
-        schedule.speedRead(at = 800) // Next speed at 1050, after the sensor's 1000.
+        schedule.speedRead(at = 1_800) // Next speed at 2050, after the sensor's 2000.
 
-        assertEquals(SecondarySlot.SENSOR, schedule.secondaryAt(1_100))
+        assertEquals(SecondarySlot.SENSOR, schedule.secondaryAt(2_100))
     }
 
     @Test

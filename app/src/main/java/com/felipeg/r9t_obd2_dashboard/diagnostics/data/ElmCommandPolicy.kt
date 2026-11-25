@@ -10,7 +10,7 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticError
  */
 internal object ElmCommandPolicy {
     /** Adapter settings and queries: they configure the ELM327 itself and are not sent to the bike. */
-    private val ADAPTER_COMMANDS = setOf("ATZ", "ATI", "ATE0", "ATH0", "ATRV", "ATSPA6", "ATSP0", "ATDP")
+    private val ADAPTER_COMMANDS = setOf("ATZ", "ATI", "ATE0", "ATH0", "ATS0", "ATRV", "ATSPA6", "ATSP0", "ATDP")
 
     /**
      * Mode 01 with one to six PIDs as uppercase hex pairs, optionally followed by a single-reply

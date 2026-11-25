@@ -7,7 +7,7 @@ package com.felipeg.r9t_obd2_dashboard.diagnostics.data
  */
 internal fun initReply(command: String): String = when {
     command == "ATZ" || command == "ATI" -> "ELM327 v1.5\r>"
-    command in setOf("ATE0", "ATH0", "ATSPA6", "ATSP0") -> "OK\r>"
+    command in setOf("ATE0", "ATH0", "ATS0", "ATSPA6", "ATSP0") -> "OK\r>"
     command == "ATRV" -> "12.6V\r>"
     command.startsWith("01") && command.length % 2 == 1 -> "?\r>"
     else -> error("Unexpected command: $command")

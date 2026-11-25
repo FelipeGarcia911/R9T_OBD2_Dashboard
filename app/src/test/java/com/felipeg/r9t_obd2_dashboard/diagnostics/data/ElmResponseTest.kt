@@ -38,6 +38,13 @@ class ElmResponseTest {
     }
 
     @Test
+    fun recognizesStatusMessagesWithoutSpacesAfterATS0() {
+        assertTrue(ElmResponse("NODATA\r>").isNoData)
+        assertTrue(ElmResponse("SEARCHING...\rUNABLETOCONNECT\r>").ecuDidNotAnswer)
+        assertFalse(ElmResponse("410C1AF80D20\r>").ecuDidNotAnswer)
+    }
+
+    @Test
     fun answerSkipsEchoesBlankLinesAndErrors() {
         assertEquals("ELM327 v1.5", ElmResponse("ATI\r\rELM327 v1.5\r>").answer)
         assertEquals("ISO 15765-4 (CAN 11/500)", ElmResponse("ATDP\rISO 15765-4 (CAN 11/500)\r>").answer)

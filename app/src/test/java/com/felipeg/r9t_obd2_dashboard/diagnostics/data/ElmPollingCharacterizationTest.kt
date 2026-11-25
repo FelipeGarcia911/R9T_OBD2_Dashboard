@@ -37,7 +37,7 @@ class ElmPollingCharacterizationTest {
         val startedAt = System.nanoTime()
         try {
             session.start("paired-device")
-            delay(2_300)
+            delay(3_300)
         } finally {
             session.stop()
         }
@@ -63,8 +63,8 @@ class ElmPollingCharacterizationTest {
         val secondaries = loop.filter { it == "0104" || it == "0105" }
         assertTrue("At least one secondary in $elapsedMillis ms", secondaries.isNotEmpty())
         assertTrue(
-            "At most one secondary per second, got ${secondaries.size} in $elapsedMillis ms",
-            secondaries.size <= elapsedMillis / 1_000 + 1,
+            "At most one secondary every $SECONDARY_PERIOD_MS ms, got ${secondaries.size} in $elapsedMillis ms",
+            secondaries.size <= elapsedMillis / SECONDARY_PERIOD_MS + 1,
         )
         assertEquals("Engine vitals are read before diagnostic-only PIDs", "0105", secondaries.first())
     }
@@ -85,7 +85,7 @@ class ElmPollingCharacterizationTest {
         val live: DiagnosticState.Live
         try {
             session.start("paired-device")
-            delay(1_400)
+            delay(2_400)
             live = session.state.value as DiagnosticState.Live
         } finally {
             session.stop()
@@ -126,7 +126,7 @@ class ElmPollingCharacterizationTest {
         val live: DiagnosticState.Live
         try {
             session.start("paired-device")
-            delay(1_400)
+            delay(2_400)
             live = session.state.value as DiagnosticState.Live
         } finally {
             session.stop()
@@ -161,7 +161,7 @@ class ElmPollingCharacterizationTest {
 
         assertTrue("Needs more readings than the trace holds, got $rpmReads", rpmReads > 150)
         assertEquals(120, trace.size)
-        listOf("ATZ", "ATI", "ATE0", "ATH0", "ATRV", "ATSPA6", "0100", "ATDP").forEach { command ->
+        listOf("ATZ", "ATI", "ATE0", "ATH0", "ATS0", "ATRV", "ATSPA6", "0100", "ATDP").forEach { command ->
             assertTrue("Handshake entry $command was evicted", trace.any { it.command == command })
         }
         val readings = trace.filter { it.stage == DiagnosticStage.POLLING && it.response != null }

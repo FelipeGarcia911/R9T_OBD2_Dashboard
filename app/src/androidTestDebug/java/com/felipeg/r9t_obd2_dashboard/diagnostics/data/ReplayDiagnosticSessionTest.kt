@@ -75,6 +75,7 @@ class ReplayDiagnosticSessionTest {
             entry(DiagnosticStage.POLLING, "Engine and vehicle speed", "010C0D", "41 0C 1A F8 0D 20\r>"),
         )
         append(ElmLogEvent.SESSION_END, entry(DiagnosticStage.POLLING, "Session ended"))
+        log.close()
         val capture = Uri.fromFile(directory.listFiles()!!.single()).toString()
 
         val states = replay(capture) { it is DiagnosticState.Disconnected }
@@ -100,6 +101,7 @@ class ReplayDiagnosticSessionTest {
             entry(DiagnosticStage.POLLING, "Engine and vehicle speed", "010C0D1", "41 0C 12 24 0D 00\r>"),
         )
         append(ElmLogEvent.SESSION_END, entry(DiagnosticStage.POLLING, "Session ended"))
+        log.close()
         val capture = Uri.fromFile(directory.listFiles()!!.single()).toString()
 
         val states = replay(capture) { it is DiagnosticState.Disconnected }

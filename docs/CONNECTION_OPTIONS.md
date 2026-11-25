@@ -81,5 +81,11 @@ read services would be acceptable; never sessions, security access or writes.
    session with `COMMAND_BLOCKED`. `EcuSilenceWatch` ends a live session after 2 s without RPM or
    speed (`NO_ECU_DATA`), and that error no longer triggers reconnects.
 2. Option A, then measure on the bike.
+   **Done, not yet measured on the bike:** the session log is written by a background coroutine
+   with the file kept open and buffered, so no request waits for its log line; replies are read
+   from the Bluetooth stream in blocks (`readReply`); secondary readings come every 2 s instead of
+   every 1 s; and the handshake sends `ATS0`, optional, with status messages such as `NODATA`
+   recognised with or without spaces. Next bike test: readings per second with logging on and
+   off (they should now match) and the exchange latency, against the 15.3 /s and 55 ms baseline.
 3. One supervised listening test (option B) to learn whether the socket carries broadcast frames.
 4. If more speed is still wanted, an STN-based adapter (option C), which also improves option B.

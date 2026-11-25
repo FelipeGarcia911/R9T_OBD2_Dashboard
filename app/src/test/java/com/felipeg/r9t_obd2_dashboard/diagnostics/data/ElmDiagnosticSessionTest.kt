@@ -45,7 +45,7 @@ class ElmDiagnosticSessionTest {
             assertTrue(session.trace.value.any {
                 it.description == "Vehicle speed (010D) · not advertised by the ECU" && it.command == null
             })
-            assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATRV", "ATSPA6", "0100", "ATDP", "010C"),
+            assertEquals(listOf("ATZ", "ATI", "ATE0", "ATH0", "ATS0", "ATRV", "ATSPA6", "0100", "ATDP", "010C"),
                 transport.commands)
             assertTrue(session.trace.value.any { it.command == "010C" && it.response == "41 0C 1A F8\r>" })
             assertTrue(

@@ -142,6 +142,7 @@ internal class ElmDiagnosticSession(
                 recorder.record("Incomplete response", channel.pendingCommand, partial, ElmLogEvent.ERROR)
             }
             recorder.record(reason, channel.pendingCommand, event = ElmLogEvent.SESSION_END)
+            recorder.closeLog()
         } catch (_: ElmLogException) {
             loggingFailed()
         } finally {

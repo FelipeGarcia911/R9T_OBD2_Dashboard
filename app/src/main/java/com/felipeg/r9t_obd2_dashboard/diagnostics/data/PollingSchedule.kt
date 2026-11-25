@@ -7,10 +7,11 @@ internal const val PRIMARY_PERIOD_MS = 50L
 internal const val SPEED_PERIOD_MS = 250L
 
 /**
- * RPM and speed own the bus: only one secondary reading per second fits between them.
- * Engine vitals take three of every four of those slots and may lag by several seconds.
+ * RPM and speed own the bus: one secondary reading every two seconds fits between them, so each
+ * takes under 3 % of the RPM and speed requests. Engine vitals take three of every four of those
+ * slots, so each refreshes about every 10 s; temperatures and voltage change slowly.
  */
-internal const val SECONDARY_PERIOD_MS = 1_000L
+internal const val SECONDARY_PERIOD_MS = 2_000L
 
 /**
  * How long a live session waits without any RPM or speed reading before it treats the ECU as

@@ -84,7 +84,7 @@ class DashboardPipelineBenchmark {
             delay(EXCHANGE_MILLIS)
             return when (command) {
                 "ATZ", "ATI" -> "ELM327 v2.3\r>"
-                "ATE0", "ATH0", "ATSPA6" -> "OK\r>"
+                "ATE0", "ATH0", "ATS0", "ATSPA6" -> "OK\r>"
                 "ATRV" -> "14.3V\r>"
                 "0100" -> "41 00 BF DE A8 13 \r>"
                 "0120" -> "41 20 80 05 B1 01 \r>"

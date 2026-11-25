@@ -41,6 +41,13 @@ internal class SessionRecorder {
         mutableTrace.value = emptyList()
     }
 
+    /** Writes out and releases the detailed log, if any. */
+    suspend fun closeLog() {
+        val open = log ?: return
+        log = null
+        open.close()
+    }
+
     /** Logs [command] before it is sent, so a reply that never arrives still shows what was asked. */
     suspend fun sending(command: String, description: String) {
         log?.append(
