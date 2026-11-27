@@ -1,6 +1,6 @@
 <resources>
     <!-- Simulator and capture replay, debug builds only -->
-    <string name="debug_show_live_diagnostics">Show live diagnostics</string>
+    <string name="debug_back_to_bike">Back to the bike</string>
     <string name="debug_example_capture">Real bike capture</string>
     <string name="debug_synthetic_data">Synthetic data</string>
     <string name="debug_open_capture">Open capture</string>

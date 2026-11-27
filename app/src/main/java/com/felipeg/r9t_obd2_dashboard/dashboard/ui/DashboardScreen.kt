@@ -31,10 +31,10 @@ import com.felipeg.r9t_obd2_dashboard.diagnostics.ui.rememberDashboardClock
 @Composable
 internal fun DashboardScreen(
     state: DiagnosticState,
-    onDiagnostics: () -> Unit,
     modifier: Modifier = Modifier,
     sourceLabel: String,
     connection: DashboardConnection,
+    menuItems: List<DashboardMenuItem> = emptyList(),
     layoutStore: DashboardLayoutStore = rememberDashboardLayoutStore(),
     shiftLightStore: ShiftLightSettingsStore = rememberShiftLightSettingsStore(),
     needleStore: NeedleSettingsStore = rememberNeedleSettingsStore(),
@@ -63,7 +63,7 @@ internal fun DashboardScreen(
                 layoutStore.save(selected)
             },
             sourceLabel = sourceLabel,
-            onDiagnostics = onDiagnostics,
+            menuItems = menuItems,
             onShiftLight = { editingShiftLight = true },
             onNeedle = { editingNeedle = true },
             link = readings.link,

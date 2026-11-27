@@ -8,7 +8,7 @@
     <string name="close">Close</string>
     <string name="open_settings">Open settings</string>
     <string name="continue_action">Continue</string>
-    <string name="open_dashboard">Open dashboard</string>
+    <string name="back_to_dashboard">Back to dashboard</string>
     <string name="show_simulation">Show simulation</string>
 
     <!-- Diagnostics screen -->
@@ -130,6 +130,7 @@
 
     <!-- Needle spring -->
     <string name="dashboard_menu_needle">Needle</string>
+    <string name="dashboard_menu_adapter">Choose adapter</string>
     <string name="needle_title">Needle</string>
     <string name="needle_default">Default</string>
     <string name="needle_damping">Damping</string>

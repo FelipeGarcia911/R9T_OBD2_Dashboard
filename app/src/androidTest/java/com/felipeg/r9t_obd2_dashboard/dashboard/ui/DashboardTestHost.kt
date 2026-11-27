@@ -70,7 +70,6 @@ internal fun showDashboard(
                     CompositionLocalProvider(LocalRenderProbe provides probe) {
                         DashboardScreen(
                             state = state(),
-                            onDiagnostics = {},
                             sourceLabel = "Test",
                             connection = DashboardConnection(connect = {}, disconnect = {}),
                             layoutStore = FixedLayoutStore(layout),

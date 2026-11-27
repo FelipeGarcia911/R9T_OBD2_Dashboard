@@ -40,8 +40,8 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 The debug build includes a simulator and a capture player, so you can explore everything on an emulator or any phone.
 
 1. Open the project in Android Studio, sync Gradle and run the `app` configuration with the **debug** variant. You need Android SDK Platform 37 and a device or emulator on Android 14 or newer.
-2. Tap **Show simulation**, then **Play capture** and **Open dashboard**, and turn the phone sideways. It plays a 75-second excerpt recorded on the reference bike, in a loop, with the ECU's real timing, so the dashboard behaves as it does on the bike.
-3. Use the tabs at the bottom to switch displays, and the **···** menu for the shift light and needle settings or to go back to diagnostics.
+2. The app opens on the dashboard and tries the bike first. Open the **···** menu, tap **Show simulation** and turn the phone sideways. It plays a 75-second excerpt recorded on the reference bike, in a loop, with the ECU's real timing, so the dashboard behaves as it does on the bike.
+3. Use the tabs at the bottom to switch displays, and the **···** menu for the shift light and needle settings, other sources, diagnostics or **Back to the bike**.
 
 **Open capture** plays any session log exported from the phone instead, and **Synthetic data** switches to a generated 36-second ride that never sits still: blips into the shift light's red zone, hard pulls through four gears, throttle on and off and downshift blips, answered the way the bike's ECU answers (a new value about every 200 ms, repeats in between, Mode 01 resolution), to test the needle over its whole range. Replays never touch Bluetooth.
 
@@ -50,10 +50,10 @@ The debug build includes a simulator and a capture player, so you can explore ev
 You need an ELM327 adapter that speaks **Bluetooth Classic** (the common "ELM327 Mini" kind). If your bike has BMW's round diagnostic socket instead of a standard OBD-II one, add a round-to-OBD-II adapter cable.
 
 1. Plug the adapter in, switch the ignition on and pair the adapter in Android's Bluetooth settings. Close any other OBD-II app that might be connected to it.
-2. Open the app, tap **Connect**, allow **Nearby devices** and choose the adapter.
-3. Wait for the session to reach *ECU responding*, then tap **Open dashboard**. Next time you can open the dashboard straight away and tap the connection lamp: it reconnects to the same adapter.
+2. Open the app. The first time, allow **Nearby devices** and choose the adapter.
+3. The dashboard is the main screen and connects on its own. Every later start connects straight to the same adapter; **Choose adapter** in the **···** menu picks another one.
 
-If something goes wrong, the diagnostics screen tells you which step failed: Bluetooth, the adapter, or the engine computer. *Unable to connect* or *no data* from the engine computer usually means the ignition is off.
+If something goes wrong, **Diagnostics** in the **···** menu tells you which step failed: Bluetooth, the adapter, or the engine computer. *Unable to connect* or *no data* from the engine computer usually means the ignition is off.
 
 When you switch the ignition off, the session notices within two seconds, stops sending requests and shows the failure; tap the connection lamp to reconnect after the next start.
 

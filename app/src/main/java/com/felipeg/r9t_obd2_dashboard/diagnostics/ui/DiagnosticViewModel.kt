@@ -45,6 +45,16 @@ internal class DiagnosticViewModel(
 
     fun disconnect() = runAction { session.stop() }
 
+    /** Stops whatever runs now, once any pending action is done, and starts [adapterId]. */
+    fun restart(adapterId: String) {
+        val previous = action
+        action = viewModelScope.launch {
+            previous?.join()
+            session.stop()
+            session.start(adapterId)
+        }
+    }
+
     private fun runAction(block: suspend () -> Unit) {
         if (action?.isActive != true) action = viewModelScope.launch { block() }
     }
