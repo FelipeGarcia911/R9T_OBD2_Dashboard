@@ -43,7 +43,7 @@ The debug build includes a simulator and a capture player, so you can explore ev
 2. Tap **Show simulation**, then **Play capture** and **Open dashboard**, and turn the phone sideways. It plays a 75-second excerpt recorded on the reference bike, in a loop, with the ECU's real timing, so the dashboard behaves as it does on the bike.
 3. Use the tabs at the bottom to switch displays, and the **···** menu for the shift light and needle settings or to go back to diagnostics.
 
-**Open capture** plays any session log exported from the phone instead, and **Synthetic data** switches to a generated 36-second ride with blips, the shift light's red zone and four gear changes, answered the way the bike's ECU answers (a new value about every 200 ms, repeats in between, Mode 01 resolution), to test the needle over its whole range. Replays never touch Bluetooth.
+**Open capture** plays any session log exported from the phone instead, and **Synthetic data** switches to a generated 36-second ride that never sits still: blips into the shift light's red zone, hard pulls through four gears, throttle on and off and downshift blips, answered the way the bike's ECU answers (a new value about every 200 ms, repeats in between, Mode 01 resolution), to test the needle over its whole range. Replays never touch Bluetooth.
 
 ## Use it on the bike
 

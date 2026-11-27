@@ -10,10 +10,10 @@ import kotlin.random.Random
 internal data class EngineState(val rpm: Double, val speedKmh: Double, val gear: GearPosition)
 
 /**
- * A 36-second ride that loops, wider than the parked captures so the needle has range to show:
- * idle with its small hunting, throttle blips in neutral, a rev into the shift light's red zone,
- * then pulling away through four gears (the RPM drops at each shift), cruising, downshifting and
- * stopping. Between keyframes the engine moves linearly, as fast as the R nineT's boxer revs.
+ * A 36-second ride that loops and keeps the needle busy: barely a second of idle, then blips in
+ * neutral up to the shift light's red zone, a hard pull through four gears (the RPM drops at each
+ * upshift), throttle on and off at speed, downshift blips, another pull and a stop with more
+ * blips. Between keyframes the engine moves linearly, as fast as the R nineT's boxer revs.
  */
 internal object SyntheticRide {
     const val LOOP_MILLIS = 36_000L
@@ -25,31 +25,57 @@ internal object SyntheticRide {
 
     private val keyframes = listOf(
         Keyframe(0.0, 1_150.0, 0.0, N),
-        Keyframe(3.0, 1_150.0, 0.0, N),
-        Keyframe(3.4, 3_000.0, 0.0, N), // quick blip
-        Keyframe(4.2, 1_150.0, 0.0, N),
-        Keyframe(6.0, 1_150.0, 0.0, N),
-        Keyframe(6.5, 4_800.0, 0.0, N), // bigger blip
-        Keyframe(7.6, 1_150.0, 0.0, N),
-        Keyframe(9.0, 1_150.0, 0.0, N),
-        Keyframe(9.8, 7_900.0, 0.0, N), // into the shift light's red zone
-        Keyframe(10.3, 7_900.0, 0.0, N),
-        Keyframe(11.6, 1_150.0, 0.0, N),
-        Keyframe(13.0, 1_150.0, 0.0, g(1)),
-        Keyframe(13.5, 1_600.0, 3.0, g(1)),
-        Keyframe(16.0, 6_800.0, 38.0, g(1)),
-        Keyframe(16.3, 4_300.0, 38.0, g(2)), // shift up: the RPM drops
-        Keyframe(18.8, 7_200.0, 66.0, g(2)),
-        Keyframe(19.1, 4_900.0, 66.0, g(3)),
-        Keyframe(21.6, 7_000.0, 94.0, g(3)),
-        Keyframe(22.0, 5_200.0, 94.0, g(4)),
-        Keyframe(25.0, 5_600.0, 100.0, g(4)), // cruising
-        Keyframe(28.0, 3_000.0, 70.0, g(4)),
-        Keyframe(28.3, 4_000.0, 70.0, g(3)), // downshift blip
-        Keyframe(31.0, 2_200.0, 40.0, g(3)),
-        Keyframe(31.3, 3_000.0, 40.0, g(2)),
-        Keyframe(33.5, 1_400.0, 10.0, g(2)),
-        Keyframe(34.5, 1_150.0, 0.0, N),
+        Keyframe(0.8, 1_150.0, 0.0, N),
+        Keyframe(1.1, 3_500.0, 0.0, N), // blips in neutral
+        Keyframe(1.6, 1_400.0, 0.0, N),
+        Keyframe(1.9, 5_200.0, 0.0, N),
+        Keyframe(2.6, 1_600.0, 0.0, N),
+        Keyframe(2.9, 7_900.0, 0.0, N), // into the shift light's red zone
+        Keyframe(3.4, 7_900.0, 0.0, N),
+        Keyframe(4.4, 1_300.0, 0.0, N),
+        Keyframe(5.0, 1_150.0, 0.0, g(1)),
+        Keyframe(5.3, 1_800.0, 3.0, g(1)), // pulling away hard
+        Keyframe(7.0, 7_800.0, 40.0, g(1)),
+        Keyframe(7.3, 4_800.0, 40.0, g(2)), // shift up: the RPM drops
+        Keyframe(9.0, 7_600.0, 70.0, g(2)),
+        Keyframe(9.3, 5_300.0, 70.0, g(3)),
+        Keyframe(11.0, 7_400.0, 100.0, g(3)),
+        Keyframe(11.3, 5_800.0, 100.0, g(4)),
+        Keyframe(13.0, 7_000.0, 120.0, g(4)),
+        Keyframe(13.4, 4_500.0, 105.0, g(4)), // throttle off and on
+        Keyframe(14.0, 6_500.0, 112.0, g(4)),
+        Keyframe(15.0, 3_500.0, 85.0, g(4)), // braking
+        Keyframe(15.3, 4_600.0, 85.0, g(3)), // downshift blip
+        Keyframe(16.2, 3_200.0, 60.0, g(3)),
+        Keyframe(16.5, 4_400.0, 60.0, g(2)),
+        Keyframe(17.2, 2_800.0, 40.0, g(2)),
+        Keyframe(17.6, 6_800.0, 55.0, g(2)), // another pull
+        Keyframe(18.8, 7_700.0, 75.0, g(2)),
+        Keyframe(19.1, 5_400.0, 75.0, g(3)),
+        Keyframe(20.5, 7_300.0, 100.0, g(3)),
+        Keyframe(21.0, 4_000.0, 80.0, g(3)), // on and off the throttle through bends
+        Keyframe(21.6, 6_600.0, 95.0, g(3)),
+        Keyframe(22.2, 3_800.0, 75.0, g(3)),
+        Keyframe(22.8, 6_200.0, 88.0, g(3)),
+        Keyframe(24.0, 7_600.0, 110.0, g(3)),
+        Keyframe(24.3, 5_900.0, 110.0, g(4)),
+        Keyframe(25.5, 6_800.0, 125.0, g(4)),
+        Keyframe(26.5, 3_600.0, 85.0, g(4)), // braking for a stop
+        Keyframe(26.8, 4_700.0, 85.0, g(3)),
+        Keyframe(27.8, 3_000.0, 55.0, g(3)),
+        Keyframe(28.1, 4_300.0, 55.0, g(2)),
+        Keyframe(29.0, 2_600.0, 35.0, g(2)),
+        Keyframe(29.3, 4_000.0, 35.0, g(1)),
+        Keyframe(30.5, 2_000.0, 15.0, g(1)),
+        Keyframe(31.2, 1_150.0, 0.0, N),
+        Keyframe(31.6, 1_150.0, 0.0, N),
+        Keyframe(32.0, 4_200.0, 0.0, N), // blips at the stop
+        Keyframe(32.5, 1_300.0, 0.0, N),
+        Keyframe(32.8, 6_000.0, 0.0, N),
+        Keyframe(33.5, 1_400.0, 0.0, N),
+        Keyframe(33.8, 7_900.0, 0.0, N),
+        Keyframe(34.2, 7_900.0, 0.0, N),
+        Keyframe(35.2, 1_200.0, 0.0, N),
         Keyframe(36.0, 1_150.0, 0.0, N),
     )
 
