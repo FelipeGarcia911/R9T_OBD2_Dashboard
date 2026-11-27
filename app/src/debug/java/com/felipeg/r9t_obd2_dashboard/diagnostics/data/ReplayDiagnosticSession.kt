@@ -21,8 +21,9 @@ import kotlinx.coroutines.withContext
 
 /**
  * Plays an ELM327 session log back with its original timing, turning the recorded replies into
- * the states a live session would have shown. The adapter ID is the capture's content URI, or
- * [SAMPLE_CAPTURE] for the bundled example.
+ * the states a live session would have shown: RPM, speed and the engine vitals. The adapter ID is
+ * the capture's content URI, or [SAMPLE_CAPTURE] for the bundled excerpt of a real session on the
+ * reference bike, whose readings repeat in a loop so the dashboard can be watched as on the bike.
  */
 internal class ReplayDiagnosticSession(
     private val scope: CoroutineScope,
@@ -40,7 +41,7 @@ internal class ReplayDiagnosticSession(
         mutableState.value = DiagnosticState.ConnectingBluetooth
         playback = scope.launch {
             try {
-                play(load(adapterId))
+                play(load(adapterId), loop = adapterId == SAMPLE_CAPTURE)
             } catch (_: IOException) {
                 invalidCapture()
             } catch (_: SecurityException) {
@@ -68,22 +69,35 @@ internal class ReplayDiagnosticSession(
         }
     }
 
-    private suspend fun play(records: List<ElmLogRecord>) {
+    /**
+     * Plays [records] with their recorded timing. With [loop], the readings after the handshake
+     * play again and again, as if the engine kept running through the same stretch.
+     */
+    private suspend fun play(records: List<ElmLogRecord>, loop: Boolean = false) {
+        records.zipWithNext().forEach { (a, b) ->
+            require(b.elapsedMillis >= a.elapsedMillis) { "Capture goes back in time" }
+        }
+        var live = playOnce(records, NO_READINGS)
+        val readings = records.dropWhile { it.entry.stage != DiagnosticStage.POLLING }
+        while (loop && readings.size > 1) live = playOnce(readings, live)
+        if (mutableState.value !is DiagnosticState.Failed) mutableState.value = DiagnosticState.Disconnected
+    }
+
+    private suspend fun playOnce(records: List<ElmLogRecord>, from: DiagnosticState.Live): DiagnosticState.Live {
         val firstElapsed = records.first().elapsedMillis
         val startedAt = System.nanoTime()
-        var previousElapsed = firstElapsed
-        var live = NO_READINGS
+        var live = from
         for (record in records) {
-            require(record.elapsedMillis >= previousElapsed) { "Capture goes back in time" }
             val playbackTime = (System.nanoTime() - startedAt) / 1_000_000
             delay((record.elapsedMillis - firstElapsed - playbackTime).coerceAtLeast(0))
-            previousElapsed = record.elapsedMillis
             if (record.event != ElmLogEvent.TX_ATTEMPT) {
                 mutableTrace.value = mutableTrace.value.appendCapped(record.entry)
             }
             live = apply(record, live)
         }
-        if (mutableState.value !is DiagnosticState.Failed) mutableState.value = DiagnosticState.Disconnected
+        // Keep each pass's gap between the last and first reading, so the loop does not stutter.
+        delay(LOOP_GAP_MILLIS)
+        return live
     }
 
     /** Shows the state [record] leads to and returns the readings to build on next. */
@@ -134,10 +148,19 @@ internal class ReplayDiagnosticSession(
                 val (rpm, speed) = ObdPidDecoder.rpmAndSpeed(response)
                 live.copy(engineRpm = reading(rpm), speedKmh = reading(speed))
             }
-            else -> return live
+            else -> telemetryPid(command)?.let { pid ->
+                val reading = ObdTelemetryCatalog.read(pid, response, receivedAtMillis)
+                live.copy(telemetry = live.telemetry.copy(readings = live.telemetry.readings + (pid.id to reading)))
+            } ?: return live
         }
         mutableState.value = next
         return next
+    }
+
+    /** The engine vitals and other Mode 01 sensors a capture may contain. */
+    private fun telemetryPid(command: String?): ObdTelemetryPid? {
+        val base = command?.let(ObdPids::baseRequest) ?: return null
+        return ObdTelemetryCatalog.pids.firstOrNull { it.command == base }
     }
 
     private fun invalidCapture() {
@@ -152,6 +175,7 @@ internal class ReplayDiagnosticSession(
     companion object {
         const val SAMPLE_CAPTURE = "sample"
         private const val MAX_ENTRIES = 50_000
+        private const val LOOP_GAP_MILLIS = 66L
         private val RPM_REQUEST = ObdPids.request(ObdPids.ENGINE_RPM)
         private val SPEED_REQUEST = ObdPids.request(ObdPids.VEHICLE_SPEED)
         private val NO_READINGS = DiagnosticState.Live(null, SignalReading.Unavailable, SignalReading.Unavailable)

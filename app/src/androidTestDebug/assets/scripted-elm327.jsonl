@@ -1,0 +1,12 @@
+{"timestamp":"2026-01-01T00:00:00.000Z","elapsedMs":0,"event":"EVENT","stage":"BLUETOOTH","description":"Opening direct Bluetooth link to ELM327"}
+{"timestamp":"2026-01-01T00:00:00.400Z","elapsedMs":400,"event":"EVENT","stage":"BLUETOOTH","description":"Bluetooth link connected"}
+{"timestamp":"2026-01-01T00:00:00.800Z","elapsedMs":800,"event":"RX","stage":"ADAPTER","description":"Identify adapter","command":"ATI","response":"ELM327 (example)\r>"}
+{"timestamp":"2026-01-01T00:00:01.200Z","elapsedMs":1200,"event":"RX","stage":"ECU","description":"Read supported PIDs","command":"0100","response":"41 00 00 18 00 00\r>"}
+{"timestamp":"2026-01-01T00:00:01.400Z","elapsedMs":1400,"event":"RX","stage":"ECU","description":"Read active protocol","command":"ATDP","response":"ISO 15765-4 (CAN)\r>"}
+{"timestamp":"2026-01-01T00:00:01.600Z","elapsedMs":1600,"event":"RX","stage":"POLLING","description":"Engine speed · 1100 rpm","command":"010C","response":"41 0C 11 30\r>"}
+{"timestamp":"2026-01-01T00:00:01.800Z","elapsedMs":1800,"event":"RX","stage":"POLLING","description":"Vehicle speed · 0 km/h","command":"010D","response":"41 0D 00\r>"}
+{"timestamp":"2026-01-01T00:00:02.700Z","elapsedMs":2700,"event":"RX","stage":"POLLING","description":"Engine speed · 4000 rpm","command":"010C","response":"41 0C 3E 80\r>"}
+{"timestamp":"2026-01-01T00:00:02.900Z","elapsedMs":2900,"event":"RX","stage":"POLLING","description":"Vehicle speed · 54 km/h","command":"010D","response":"41 0D 36\r>"}
+{"timestamp":"2026-01-01T00:00:04.200Z","elapsedMs":4200,"event":"RX","stage":"POLLING","description":"Vehicle speed unavailable","command":"010D","response":"NO DATA\r>"}
+{"timestamp":"2026-01-01T00:00:05.500Z","elapsedMs":5500,"event":"ERROR","stage":"POLLING","description":"timeout","command":"010D"}
+{"timestamp":"2026-01-01T00:00:05.600Z","elapsedMs":5600,"event":"SESSION_END","stage":"POLLING","description":"Session ended"}

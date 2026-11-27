@@ -15,6 +15,7 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 - **Shift light.** From the start RPM the screen edges glow amber; from the shift RPM they flash red. Start RPM, shift RPM and flashing frequency are adjustable.
 - **Ride mode.** While the dashboard is open the screen stays on and the system bars hide away.
 - **RPM and speed come first.** About 15 readings a second on the reference bike, asked for together in one request; slower readings are fitted in between, so the needle never waits for a temperature.
+- **A needle that moves like a real one.** The reference ECU only updates RPM about five times a second; the app joins those values into a continuous curve and drives the needle with a physics spring, so it never stalls between readings and settles without false bounces.
 - **Smooth drawing.** Each display keeps its scale, ticks and numerals in a cached GPU layer and redraws only the needle or lit segments, at a steady 60 Hz.
 - **Safe by design.** The app only ever sends read requests, checked against an allowlist before anything leaves the phone, and stops asking as soon as the ignition goes off.
 - **Connection lamp.** Beside the display tabs, a connector glyph shows the adapter link at a glance: green and joined while the bike answers, flashing amber while connecting (faster when a link was lost), red when it failed. Tap it to reconnect to the last adapter in one touch, choose another, or disconnect.
@@ -39,10 +40,10 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 The debug build includes a simulator and a capture player, so you can explore everything on an emulator or any phone.
 
 1. Open the project in Android Studio, sync Gradle and run the `app` configuration with the **debug** variant. You need Android SDK Platform 37 and a device or emulator on Android 14 or newer.
-2. Tap **Show simulation**, then **Open dashboard**, and turn the phone sideways.
+2. Tap **Show simulation**, then **Play capture** and **Open dashboard**, and turn the phone sideways. It plays a 75-second excerpt recorded on the reference bike, in a loop, with the ECU's real timing, so the dashboard behaves as it does on the bike.
 3. Use the tabs at the bottom to switch displays, and the **···** menu for the shift light settings or to go back to diagnostics.
 
-To replay a real ride instead, tap **Example capture** (bundled with the app) or **Open capture** to choose a session log exported from the phone, then **Play capture**. Replays run with the original timing and never touch Bluetooth.
+**Open capture** plays any session log exported from the phone instead, and **Synthetic data** switches to a generated ride (including a simulated ECU timeout). Replays never touch Bluetooth.
 
 ## Use it on the bike
 

@@ -17,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -34,10 +35,16 @@ class ReplayDiagnosticSessionTest {
         directory.deleteRecursively()
     }
 
+    /** A short scripted capture (androidTestDebug assets) that walks through every stage. */
     @Test
-    fun replaysTheExampleCaptureThroughEveryConnectionStage() = runBlocking {
+    fun replaysACaptureThroughEveryConnectionStage() = runBlocking {
         val protocol = "ISO 15765-4 (CAN)"
-        val states = replay(ReplayDiagnosticSession.SAMPLE_CAPTURE) { it is DiagnosticState.Failed }
+        directory.mkdirs()
+        val scripted = File(directory, "scripted.jsonl")
+        InstrumentationRegistry.getInstrumentation().context.assets.open("scripted-elm327.jsonl").use { input ->
+            scripted.outputStream().use { input.copyTo(it) }
+        }
+        val states = replay(Uri.fromFile(scripted).toString()) { it is DiagnosticState.Failed }
 
         fun live(rpm: SignalReading, speed: SignalReading) = DiagnosticState.Live(protocol, rpm, speed)
         val unavailable = SignalReading.Unavailable
@@ -56,6 +63,25 @@ class ReplayDiagnosticSessionTest {
             ),
             states,
         )
+    }
+
+    /** The bundled excerpt of a real session: live readings and vitals, looping without ending. */
+    @Test
+    fun playsTheRealSampleCaptureInALoop() = runBlocking {
+        val session = ReplayDiagnosticSession(this, context)
+        try {
+            session.start(ReplayDiagnosticSession.SAMPLE_CAPTURE)
+            val live = withTimeout(10_000) {
+                session.state.first { state ->
+                    state is DiagnosticState.Live && state.engineRpm is SignalReading.Sample &&
+                        state.telemetry.readings.isNotEmpty()
+                }
+            } as DiagnosticState.Live
+            assertEquals("AUTO, ISO 15765-4 (CAN 11/500)", live.protocol)
+            assertTrue((live.engineRpm as SignalReading.Sample).value in 900.0..3_500.0)
+        } finally {
+            session.stop()
+        }
     }
 
     @Test

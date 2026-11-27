@@ -41,7 +41,8 @@ internal fun DiagnosticContent(modifier: Modifier) {
 @Composable
 private fun SimulatedDiagnosticContent(modifier: Modifier, onShowLive: () -> Unit) {
     val activity = LocalContext.current as ComponentActivity
-    var capture by rememberSaveable { mutableStateOf<String?>(null) }
+    // Starts on the bundled real capture, looping, so the dashboard behaves as on the bike.
+    var capture by rememberSaveable { mutableStateOf<String?>(ReplayDiagnosticSession.SAMPLE_CAPTURE) }
     val application = activity.applicationContext
     val simulation = rememberDiagnosticViewModel(activity, "simulated-diagnostics", ::SimulatedDiagnosticSession)
     val replay = rememberDiagnosticViewModel(activity, "replay-diagnostics") { scope ->
@@ -84,7 +85,7 @@ private fun SimulatedDiagnosticContent(modifier: Modifier, onShowLive: () -> Uni
                     OutlinedButton(onClick = {
                         replay.disconnect()
                         capture = null
-                    }) { Text(stringResource(R.string.show_simulation)) }
+                    }) { Text(stringResource(R.string.debug_synthetic_data)) }
                 }
                 OutlinedButton(onClick = { openCapture.launch(arrayOf("*/*")) }) { Text(stringResource(R.string.debug_open_capture)) }
             }
