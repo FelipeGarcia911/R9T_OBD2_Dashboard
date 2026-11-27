@@ -48,7 +48,8 @@ To do:
 Done (items 1–3): each display's gauge is a `GaugeStyle` drawn by `LayeredGauge`, with the scale
 in a cached GPU layer and only the reading redrawn per frame; speed digits recompose only when the
 whole number changes; the frame's ground is cached; the dashboard asks for 60 Hz; the spring is
-StiffnessMedium. `DashboardLayersTest` guards the layering and `DashboardFrameBenchmark` measures
+StiffnessMedium (reverted on 2026-11-26: on the bike the original StiffnessMediumLow felt right,
+and both the stiffer spring and an interpolated, physics-driven needle felt worse). `DashboardLayersTest` guards the layering and `DashboardFrameBenchmark` measures
 frames (`adb logcat -d -s DashboardBench`). On a G30-like emulator (720×1600, host GPU, 4 cores),
 before → after: UI thread per frame p50 14–22 ms → 4–8 ms, 29–52 fps → 46–59 fps. The render
 thread (~11–15 ms) is unchanged and is the next lever.

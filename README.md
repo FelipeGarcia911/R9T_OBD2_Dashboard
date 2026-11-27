@@ -15,7 +15,6 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 - **Shift light.** From the start RPM the screen edges glow amber; from the shift RPM they flash red. Start RPM, shift RPM and flashing frequency are adjustable.
 - **Ride mode.** While the dashboard is open the screen stays on and the system bars hide away.
 - **RPM and speed come first.** About 15 readings a second on the reference bike, asked for together in one request; slower readings are fitted in between, so the needle never waits for a temperature.
-- **A needle that moves like a real one.** The reference ECU only updates RPM about five times a second; the app joins those values into a continuous curve and drives the needle with a physics spring, so it never stalls between readings and settles without false bounces.
 - **Smooth drawing.** Each display keeps its scale, ticks and numerals in a cached GPU layer and redraws only the needle or lit segments, at a steady 60 Hz.
 - **Safe by design.** The app only ever sends read requests, checked against an allowlist before anything leaves the phone, and stops asking as soon as the ignition goes off.
 - **Connection lamp.** Beside the display tabs, a connector glyph shows the adapter link at a glance: green and joined while the bike answers, flashing amber while connecting (faster when a link was lost), red when it failed. Tap it to reconnect to the last adapter in one touch, choose another, or disconnect.

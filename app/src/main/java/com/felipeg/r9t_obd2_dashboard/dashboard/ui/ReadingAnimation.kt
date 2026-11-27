@@ -4,21 +4,19 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
-import com.felipeg.r9t_obd2_dashboard.dashboard.needle.TachometerNeedle
 import kotlin.math.roundToInt
 
 /**
- * Settles in ~100 ms with no overshoot, for the speed digits: a critically damped spring keeps its
- * velocity when the target changes, so the digits count continuously instead of jumping.
+ * Settles in ~200 ms with no overshoot. A critically damped spring keeps its velocity when the
+ * target changes, so gauges and digits move continuously instead of stopping between samples.
+ * Shared by every display. This is the needle feel confirmed on the bike; stiffer springs and an
+ * interpolated target were tried on 2026-11-26 and felt worse.
  */
 internal val ReadingSpring = spring<Float>(
     dampingRatio = Spring.DampingRatioNoBouncy,
-    stiffness = Spring.StiffnessMedium,
+    stiffness = Spring.StiffnessMediumLow,
 )
 
 /**
@@ -30,32 +28,18 @@ internal val ReadingSpring = spring<Float>(
 internal class AnimatedReadings(val tachometer: () -> Float?, val speedKmh: () -> Int?)
 
 /**
- * Moves the tachometer needle like a real one ([TachometerNeedle]) and the speed toward
- * [readings] with [ReadingSpring]. A missing reading stays null, so displays show it as missing
- * instead of animating toward zero.
+ * Moves the tachometer and speed toward [readings] with [ReadingSpring]. A missing reading stays
+ * null, so displays show it as missing instead of animating toward zero.
  */
 @Composable
 internal fun animateReadings(readings: DashboardReadings): AnimatedReadings {
-    val needle = remember { TachometerNeedle() }
-    val needlePosition = remember { mutableStateOf<Float?>(null) }
-    val rpm = readings.rpm
-    // Keyed on the value: the ECU repeats each RPM value several times, and repeats are not news.
-    LaunchedEffect(rpm) {
-        needle.onReading(System.nanoTime() / 1_000_000, rpm?.let { TachometerScale.fromRpm(it) })
-    }
-    LaunchedEffect(needle) {
-        while (true) {
-            withFrameNanos { frameNanos ->
-                needlePosition.value = needle.advance(frameNanos / 1_000_000)?.coerceIn(0f, TachometerScale.MAX)
-            }
-        }
-    }
-
+    val tachometer = animateFloatAsState(TachometerScale.fromRpm(readings.rpm), ReadingSpring, label = "rpm")
     val speed = animateFloatAsState((readings.speedKmh ?: 0.0).toFloat(), ReadingSpring, label = "speed")
+    val hasRpm = readings.rpm != null
     val hasSpeed = readings.speedKmh != null
-    return remember(hasSpeed, speed) {
+    return remember(hasRpm, hasSpeed, tachometer, speed) {
         AnimatedReadings(
-            tachometer = { needlePosition.value },
+            tachometer = { if (hasRpm) tachometer.value else null },
             speedKmh = { if (hasSpeed) speed.value.roundToInt() else null },
         )
     }
