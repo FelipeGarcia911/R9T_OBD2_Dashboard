@@ -18,7 +18,6 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight.ShiftLightSettingsSto
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.needle.LocalNeedleSettings
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.needle.NeedleSettingsDialog
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.needle.rememberNeedleSettingsStore
-import com.felipeg.r9t_obd2_dashboard.dashboard.ui.classic.ClassicDashboardPanel
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.shiftlight.ShiftLightOverlay
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.shiftlight.ShiftLightSettingsDialog
@@ -34,7 +33,7 @@ internal fun DashboardScreen(
     modifier: Modifier = Modifier,
     sourceLabel: String,
     connection: DashboardConnection,
-    menuItems: List<DashboardMenuItem> = emptyList(),
+    appMenuItems: List<DashboardMenuItem> = emptyList(),
     layoutStore: DashboardLayoutStore = rememberDashboardLayoutStore(),
     shiftLightStore: ShiftLightSettingsStore = rememberShiftLightSettingsStore(),
     needleStore: NeedleSettingsStore = rememberNeedleSettingsStore(),
@@ -52,7 +51,6 @@ internal fun DashboardScreen(
         CompositionLocalProvider(LocalNeedleSettings provides needle) {
             when (layout) {
                 DashboardLayout.SPORT -> SportDashboardPanel(readings, time)
-                DashboardLayout.CLASSIC -> ClassicDashboardPanel(readings, time)
             }
         }
         // Same place on every display, so the rider always finds it in one spot.
@@ -63,7 +61,7 @@ internal fun DashboardScreen(
                 layoutStore.save(selected)
             },
             sourceLabel = sourceLabel,
-            menuItems = menuItems,
+            appMenuItems = appMenuItems,
             onShiftLight = { editingShiftLight = true },
             onNeedle = { editingNeedle = true },
             link = readings.link,

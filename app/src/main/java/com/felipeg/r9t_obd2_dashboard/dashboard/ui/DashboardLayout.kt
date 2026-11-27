@@ -6,15 +6,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.content.edit
 import com.felipeg.r9t_obd2_dashboard.R
 
 /**
  * Displays the rider can pick from the selector, in tab order. To add a display, add an entry
- * here and its panel in DashboardScreen.
+ * here and its panel in DashboardScreen. A stored display that no longer exists, such as the
+ * removed Classic one, opens on [DEFAULT].
  */
 internal enum class DashboardLayout(@StringRes val title: Int) {
-    SPORT(R.string.dashboard_display_sport),
-    CLASSIC(R.string.dashboard_display_classic);
+    SPORT(R.string.dashboard_display_sport);
 
     companion object {
         val DEFAULT = SPORT
@@ -35,7 +36,7 @@ internal class SharedPreferencesDashboardLayoutStore(context: Context) : Dashboa
             ?: DashboardLayout.DEFAULT
 
     override fun save(layout: DashboardLayout) {
-        preferences.edit().putString(KEY, layout.name).apply()
+        preferences.edit { putString(KEY, layout.name) }
     }
 
     private companion object {

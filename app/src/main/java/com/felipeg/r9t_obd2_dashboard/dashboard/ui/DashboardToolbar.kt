@@ -30,12 +30,12 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.link.LinkState
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.AdapterLinkLamp
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 
-/** An entry the screen around the dashboard adds to its menu, such as Diagnostics. */
+/** An entry the screen around the dashboard adds to the app menu, such as Diagnostics. */
 internal data class DashboardMenuItem(val label: String, val onClick: () -> Unit)
 
 /**
- * Controls shared by every display: the dashboard menu, one tab per display and the adapter
- * connection lamp, styled as TFT label boxes. DashboardScreen places it in the same spot for every
+ * Controls shared by every display: the app menu (when it has [appMenuItems]), the display
+ * menu, one tab per display and the adapter connection lamp, styled as TFT label boxes. DashboardScreen places it in the same spot for every
  * display.
  */
 @Composable
@@ -43,7 +43,7 @@ internal fun DashboardToolbar(
     selected: DashboardLayout,
     onSelect: (DashboardLayout) -> Unit,
     sourceLabel: String,
-    menuItems: List<DashboardMenuItem>,
+    appMenuItems: List<DashboardMenuItem>,
     onShiftLight: () -> Unit,
     onNeedle: () -> Unit,
     link: LinkState,
@@ -56,7 +56,8 @@ internal fun DashboardToolbar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        DashboardMenu(sourceLabel, menuItems, onShiftLight, onNeedle)
+        if (appMenuItems.isNotEmpty()) AppMenu(appMenuItems, Modifier.fillMaxHeight())
+        DashboardMenu(sourceLabel, onShiftLight, onNeedle)
         DisplaySelector(selected, onSelect)
         AdapterLinkLamp(link, connection, Modifier.fillMaxHeight())
     }
@@ -92,7 +93,6 @@ internal fun DisplaySelector(
 @Composable
 private fun DashboardMenu(
     sourceLabel: String,
-    menuItems: List<DashboardMenuItem>,
     onShiftLight: () -> Unit,
     onNeedle: () -> Unit,
 ) {
@@ -117,12 +117,6 @@ private fun DashboardMenu(
                 expanded = false
                 onNeedle()
             })
-            menuItems.forEach { item ->
-                DropdownMenuItem(text = { Text(item.label) }, onClick = {
-                    expanded = false
-                    item.onClick()
-                })
-            }
         }
     }
 }

@@ -30,11 +30,8 @@ class TachometerScaleTest {
 
     @Test
     fun selectorOffersSportFirstAndOpensOnIt() {
-        assertEquals(listOf(DashboardLayout.SPORT, DashboardLayout.CLASSIC), DashboardLayout.entries)
-        assertEquals(
-            listOf(R.string.dashboard_display_sport, R.string.dashboard_display_classic),
-            DashboardLayout.entries.map { it.title },
-        )
+        assertEquals(listOf(DashboardLayout.SPORT), DashboardLayout.entries)
+        assertEquals(listOf(R.string.dashboard_display_sport), DashboardLayout.entries.map { it.title })
         assertEquals(DashboardLayout.SPORT, DashboardLayout.DEFAULT)
     }
 }

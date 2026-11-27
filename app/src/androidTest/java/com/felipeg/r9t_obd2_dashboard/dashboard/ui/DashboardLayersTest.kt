@@ -16,9 +16,6 @@ class DashboardLayersTest {
     @Test
     fun sportRedrawsOnlyTheNeedle() = assertOnlyReadingRedraws(DashboardLayout.SPORT)
 
-    @Test
-    fun classicRedrawsOnlyTheLitSegments() = assertOnlyReadingRedraws(DashboardLayout.CLASSIC)
-
     private fun assertOnlyReadingRedraws(layout: DashboardLayout) {
         val draws = ConcurrentHashMap<RenderLayer, AtomicInteger>()
         val probe = RenderProbe { layer -> draws.getOrPut(layer) { AtomicInteger() }.incrementAndGet() }

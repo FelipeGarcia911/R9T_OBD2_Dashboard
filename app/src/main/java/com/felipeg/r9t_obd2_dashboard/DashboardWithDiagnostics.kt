@@ -15,7 +15,7 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 import com.felipeg.r9t_obd2_dashboard.diagnostics.application.DiagnosticState
 
 /**
- * The dashboard for [session], the app's main screen. Diagnostics in its menu, after
+ * The dashboard for [session], the app's main screen. Diagnostics in its app menu, after
  * [menuItems], opens [diagnostics], which returns through `backToDashboard` or Back without
  * stopping the session.
  */
@@ -38,7 +38,7 @@ internal fun DashboardWithDiagnostics(
             modifier = modifier,
             sourceLabel = sourceLabel,
             connection = connection,
-            menuItems = menuItems + DashboardMenuItem(stringResource(R.string.dashboard_menu_diagnostics)) {
+            appMenuItems = menuItems + DashboardMenuItem(stringResource(R.string.dashboard_menu_diagnostics)) {
                 showDiagnostics = true
             },
         )

@@ -86,18 +86,16 @@
     <!-- Dashboard -->
     <string name="dashboard_rotate">Rotate your phone to view the dashboard.</string>
     <string name="dashboard_display_sport">Sport</string>
-    <string name="dashboard_display_classic">Classic</string>
     <string name="dashboard_display_selector">Display selector</string>
-    <string name="dashboard_menu">Dashboard menu</string>
+    <string name="dashboard_menu">Display settings</string>
+    <string name="app_menu">App settings</string>
     <string name="dashboard_menu_shift_light">Shift light</string>
     <string name="dashboard_menu_diagnostics">Diagnostics</string>
     <string name="dashboard_battery">Batt</string>
     <string name="dashboard_air">Air</string>
-    <string name="dashboard_total">Total</string>
     <string name="dashboard_engine">Engine</string>
     <string name="dashboard_oil">Oil</string>
     <string name="dashboard_rpm_scale">RPM x 1000</string>
-    <string name="dashboard_rpm_scale_stacked">RPM\nx 1000</string>
     <string name="dashboard_tachometer_description">Tachometer, zero to ten thousand RPM</string>
     <plurals name="dashboard_speed_description">
         <item quantity="one">%1$d kilometer per hour</item>

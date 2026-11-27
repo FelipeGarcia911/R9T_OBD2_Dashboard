@@ -20,9 +20,6 @@ class DashboardFrameBenchmark {
     @Test
     fun sport() = measure(DashboardLayout.SPORT)
 
-    @Test
-    fun classic() = measure(DashboardLayout.CLASSIC)
-
     private fun measure(layout: DashboardLayout) {
         val frames = FrameRecorder()
         runDashboard(

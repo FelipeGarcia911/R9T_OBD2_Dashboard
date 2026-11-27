@@ -26,7 +26,7 @@ internal object TftBars {
 
 /**
  * How a view dresses the shared TFT frame: the accent of the rule under the top bar, and the
- * top bar's background, or none to leave it on the ground as the classic view does.
+ * top bar's background, or none to leave it on the ground.
  */
 internal data class TftFrameStyle(val rule: Color, val topBar: Brush?) {
     companion object {
@@ -34,7 +34,6 @@ internal data class TftFrameStyle(val rule: Color, val topBar: Brush?) {
             rule = TftColors.Cyan,
             topBar = Brush.verticalGradient(listOf(TftColors.TopBarTop, TftColors.TopBarBottom)),
         )
-        val Classic = TftFrameStyle(rule = TftColors.Amber, topBar = null)
     }
 }
 

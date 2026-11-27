@@ -10,7 +10,7 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 
 ## Highlights
 
-- **Two displays, one tap apart.** *Sport* is a round tachometer with the speed in its center; *Classic* is a bar tachometer that climbs the left edge and runs across the top. Switch between them from the bottom of the screen; the app remembers your choice.
+- **TFT-style display.** *Sport* is a round tachometer with the speed in its center. The display tabs at the bottom stay ready for more styles; the app remembers your choice.
 - **Engine vitals at a glance.** Engine and oil temperature, battery voltage and intake air temperature, refreshed about every 10 seconds; they change slowly, so RPM and speed keep the bus.
 - **Shift light.** From the start RPM the screen edges glow amber; from the shift RPM they flash red. Start RPM, shift RPM and flashing frequency are adjustable.
 - **Needle feel.** The tachometer needle's spring (damping and stiffness) can be tuned by hand; **Default** restores the feel confirmed on the bike.
@@ -25,10 +25,6 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 
 ## Screenshots
 
-| Classic display | Shift light at the limit |
-| --- | --- |
-| ![Classic display with the bar tachometer, speed and gear](docs/screenshots/classic.png) | ![Classic display with the screen edges flashing red](docs/screenshots/shift-light.png) |
-
 | Shift light settings | Diagnostics |
 | --- | --- |
 | ![Shift light settings: on or off, start RPM, shift RPM and flashing frequency](docs/screenshots/shift-light-settings.png) | <img src="docs/screenshots/diagnostics.png" alt="Diagnostics screen with session state, RPM, speed and update rates" width="270"> |
@@ -40,8 +36,8 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 The debug build includes a simulator and a capture player, so you can explore everything on an emulator or any phone.
 
 1. Open the project in Android Studio, sync Gradle and run the `app` configuration with the **debug** variant. You need Android SDK Platform 37 and a device or emulator on Android 14 or newer.
-2. The app opens on the dashboard and tries the bike first. Open the **···** menu, tap **Show simulation** and turn the phone sideways. It plays a 75-second excerpt recorded on the reference bike, in a loop, with the ECU's real timing, so the dashboard behaves as it does on the bike.
-3. Use the tabs at the bottom to switch displays, and the **···** menu for the shift light and needle settings, other sources, diagnostics or **Back to the bike**.
+2. The app opens on the dashboard and tries the bike first. Open the gear menu, tap **Show simulation** and turn the phone sideways. It plays a 75-second excerpt recorded on the reference bike, in a loop, with the ECU's real timing, so the dashboard behaves as it does on the bike.
+3. Use the tabs at the bottom to switch displays, and the **···** menu for the display's settings (shift light and needle). The gear menu beside it holds the app's own: other sources, diagnostics or **Back to the bike**.
 
 **Open capture** plays any session log exported from the phone instead, and **Synthetic data** switches to a generated 36-second ride that never sits still: blips into the shift light's red zone, hard pulls through four gears, throttle on and off and downshift blips, answered the way the bike's ECU answers (a new value about every 200 ms, repeats in between, Mode 01 resolution), to test the needle over its whole range. Replays never touch Bluetooth.
 
@@ -51,9 +47,9 @@ You need an ELM327 adapter that speaks **Bluetooth Classic** (the common "ELM327
 
 1. Plug the adapter in, switch the ignition on and pair the adapter in Android's Bluetooth settings. Close any other OBD-II app that might be connected to it.
 2. Open the app. The first time, allow **Nearby devices** and choose the adapter.
-3. The dashboard is the main screen and connects on its own. Every later start connects straight to the same adapter; **Choose adapter** in the **···** menu picks another one.
+3. The dashboard is the main screen and connects on its own. Every later start connects straight to the same adapter; **Choose adapter** in the gear menu picks another one.
 
-If something goes wrong, **Diagnostics** in the **···** menu tells you which step failed: Bluetooth, the adapter, or the engine computer. *Unable to connect* or *no data* from the engine computer usually means the ignition is off.
+If something goes wrong, **Diagnostics** in the gear menu tells you which step failed: Bluetooth, the adapter, or the engine computer. *Unable to connect* or *no data* from the engine computer usually means the ignition is off.
 
 When you switch the ignition off, the session notices within two seconds, stops sending requests and shows the failure; tap the connection lamp to reconnect after the next start.
 
@@ -89,7 +85,7 @@ The code follows Clean Architecture, with pure Kotlin logic kept apart from Andr
 | `diagnostics/application` | The session contract shared by the live, simulated and replay sources: states, readings and errors |
 | `diagnostics/data` | The ELM327 session, split into handshake, polling loop, polling schedule, reconnect policy and the command allowlist; the Bluetooth transport; PID decoding; session logs |
 | `diagnostics/ui` | Diagnostics screen and its ViewModel |
-| `dashboard` | The Sport and Classic displays as `GaugeStyle` strategies drawn in layers by `LayeredGauge`, their pure geometry, the connection lamp, the shift light and the shared TFT styling |
+| `dashboard` | The Sport display as a `GaugeStyle` strategy drawn in layers by `LayeredGauge`, their pure geometry, the connection lamp, the shift light and the shared TFT styling |
 | `src/debug` | The simulator, the capture player and the demo entry point |
 
 Built with Kotlin, Jetpack Compose, Material 3, coroutines and AndroidX ViewModel.
