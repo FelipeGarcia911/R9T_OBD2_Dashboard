@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.needle.LocalNeedleSettings
 import kotlin.math.roundToInt
 
 /**
@@ -28,12 +29,16 @@ internal val ReadingSpring = spring<Float>(
 internal class AnimatedReadings(val tachometer: () -> Float?, val speedKmh: () -> Int?)
 
 /**
- * Moves the tachometer and speed toward [readings] with [ReadingSpring]. A missing reading stays
- * null, so displays show it as missing instead of animating toward zero.
+ * Moves the tachometer needle toward [readings] with the rider's needle spring
+ * ([LocalNeedleSettings], by default the same as [ReadingSpring]) and the speed with
+ * [ReadingSpring]. A missing reading stays null, so displays show it as missing instead of
+ * animating toward zero.
  */
 @Composable
 internal fun animateReadings(readings: DashboardReadings): AnimatedReadings {
-    val tachometer = animateFloatAsState(TachometerScale.fromRpm(readings.rpm), ReadingSpring, label = "rpm")
+    val needle = LocalNeedleSettings.current
+    val needleSpring = remember(needle) { spring<Float>(dampingRatio = needle.dampingRatio, stiffness = needle.stiffness) }
+    val tachometer = animateFloatAsState(TachometerScale.fromRpm(readings.rpm), needleSpring, label = "rpm")
     val speed = animateFloatAsState((readings.speedKmh ?: 0.0).toFloat(), ReadingSpring, label = "speed")
     val hasRpm = readings.rpm != null
     val hasSpeed = readings.speedKmh != null

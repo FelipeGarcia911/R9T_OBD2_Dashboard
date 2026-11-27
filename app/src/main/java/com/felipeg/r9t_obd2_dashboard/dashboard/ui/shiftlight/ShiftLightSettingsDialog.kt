@@ -34,13 +34,14 @@ import com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight.ShiftLightPhase
 import com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight.ShiftLightSettings
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftColors
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftLabelBox
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftSettingRow
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftSettingsPanel
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.tftSliderColors
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.tft.TftTypography
 import java.text.NumberFormat
 import kotlin.math.roundToInt
 import androidx.compose.ui.res.stringResource
 import com.felipeg.r9t_obd2_dashboard.R
-
-private val PanelShape = RoundedCornerShape(6.dp)
 
 /**
  * The shift light configuration, as the TFT's Settings › Vehicle settings › Shift light page:
@@ -64,24 +65,13 @@ private fun ShiftLightSettingsPanel(
     onChange: (ShiftLightSettings) -> Unit,
     onDone: () -> Unit,
 ) {
-    Column(
-        Modifier.widthIn(max = 520.dp)
-            .background(TftColors.GroundCenter, PanelShape)
-            .border(1.dp, TftColors.ControlOutline, PanelShape)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        val switchDescription = stringResource(
-            if (settings.enabled) R.string.shift_light_switch_on else R.string.shift_light_switch_off,
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.shift_light_title).uppercase(),
-                color = TftColors.Amber,
-                style = TftTypography.style(18.dp, FontWeight.Medium, italic = false),
-                modifier = Modifier.weight(1f),
-            )
+    val switchDescription = stringResource(
+        if (settings.enabled) R.string.shift_light_switch_on else R.string.shift_light_switch_off,
+    )
+    TftSettingsPanel(
+        title = stringResource(R.string.shift_light_title),
+        onDone = onDone,
+        titleEnd = {
             TftLabelBox(
                 stringResource(if (settings.enabled) R.string.shift_light_on else R.string.shift_light_off),
                 active = settings.enabled,
@@ -89,28 +79,26 @@ private fun ShiftLightSettingsPanel(
                     .clickable(role = Role.Switch) { onChange(settings.copy(enabled = !settings.enabled)) }
                     .semantics { contentDescription = switchDescription },
             )
-        }
+        },
+    ) {
         val enabled = settings.enabled
         RpmSetting(stringResource(R.string.shift_light_start_rpm), settings.startRpm, enabled) { onChange(settings.withStart(it)) }
         RpmSetting(stringResource(R.string.shift_light_shift_rpm), settings.shiftRpm, enabled) { onChange(settings.withShift(it)) }
         FrequencySetting(settings.frequencyHz, enabled) { onChange(settings.withFrequency(it)) }
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-            TftLabelBox(stringResource(R.string.done), active = true, modifier = Modifier.clickable(role = Role.Button, onClick = onDone))
-        }
     }
 }
 
 @Composable
 private fun RpmSetting(label: String, rpm: Int, enabled: Boolean, onChange: (Int) -> Unit) {
     val range = ShiftLightSettings.RPM_RANGE
-    SettingRow(label, "${NumberFormat.getIntegerInstance().format(rpm)} rpm", enabled) {
+    TftSettingRow(label, "${NumberFormat.getIntegerInstance().format(rpm)} rpm", enabled) {
         Slider(
             value = rpm.toFloat(),
             onValueChange = { onChange(it.roundToInt()) },
             valueRange = range.first.toFloat()..range.last.toFloat(),
             steps = (range.last - range.first) / ShiftLightSettings.RPM_STEP - 1,
             enabled = enabled,
-            colors = settingSliderColors(),
+            colors = tftSliderColors(),
             modifier = Modifier.semantics { contentDescription = label },
         )
     }
@@ -120,7 +108,7 @@ private fun RpmSetting(label: String, rpm: Int, enabled: Boolean, onChange: (Int
 private fun FrequencySetting(hz: Int, enabled: Boolean, onChange: (Int) -> Unit) {
     val range = ShiftLightSettings.FREQUENCY_RANGE
     val sliderDescription = stringResource(R.string.shift_light_frequency_slider)
-    SettingRow(
+    TftSettingRow(
         stringResource(R.string.shift_light_frequency),
         if (hz == 0) stringResource(R.string.shift_light_steady) else "$hz Hz",
         enabled,
@@ -132,36 +120,9 @@ private fun FrequencySetting(hz: Int, enabled: Boolean, onChange: (Int) -> Unit)
             valueRange = range.first.toFloat()..range.last.toFloat(),
             steps = range.last - range.first - 1,
             enabled = enabled,
-            colors = settingSliderColors(),
+            colors = tftSliderColors(),
             modifier = Modifier.semantics { contentDescription = sliderDescription },
         )
-    }
-}
-
-@Composable
-private fun SettingRow(
-    label: String,
-    value: String,
-    enabled: Boolean,
-    lamp: @Composable () -> Unit = {},
-    control: @Composable () -> Unit,
-) {
-    Column {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                label.uppercase(),
-                color = if (enabled) TftColors.White else TftColors.TickDim,
-                style = TftTypography.style(13.dp, FontWeight.SemiBold, italic = false),
-                modifier = Modifier.weight(1f),
-            )
-            lamp()
-            Text(
-                value,
-                color = if (enabled) TftColors.White else TftColors.TickDim,
-                style = TftTypography.style(20.dp, FontWeight.Bold),
-            )
-        }
-        control()
     }
 }
 
@@ -176,18 +137,6 @@ private fun PreviewLamp(hz: Int) {
             .semantics { contentDescription = description },
     )
 }
-
-@Composable
-private fun settingSliderColors() = SliderDefaults.colors(
-    thumbColor = TftColors.Amber,
-    activeTrackColor = TftColors.Amber,
-    inactiveTrackColor = TftColors.BarDim,
-    activeTickColor = Color.Transparent,
-    inactiveTickColor = Color.Transparent,
-    disabledThumbColor = TftColors.TickDim,
-    disabledActiveTrackColor = TftColors.BarDim,
-    disabledInactiveTrackColor = TftColors.SegmentDim,
-)
 
 @Preview(name = "Shift light settings", widthDp = 520, heightDp = 400)
 @Composable

@@ -51,42 +51,42 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
 
             record(DiagnosticStage.ECU, "Supported PIDs · RPM and speed", "0100", "41 00 00 18 00 00")
             record(DiagnosticStage.ADAPTER, "Detected protocol", "ATDP", "Simulated CAN")
-            val startedAt = System.nanoTime() / 1_000_000
-            var tick = 0L
-            var speed: SignalReading = SignalReading.Unavailable
-            while (isActive) {
-                val timestamp = startedAt + tick * 500
-                val position = (tick % 12).toInt()
-                val rpmValue = DEMO_RPM[position]
-                val rpm = SignalReading.Sample(rpmValue.toDouble(), timestamp)
-                val encodedRpm = rpmValue * 4
-                record(
-                    DiagnosticStage.POLLING, "Engine speed · $rpmValue rpm", ObdPids.request(ObdPids.ENGINE_RPM),
-                    "41 0C ${ObdPids.hex(encodedRpm shr 8)} ${ObdPids.hex(encodedRpm and 0xFF)}",
-                )
-                if (tick % 2 == 0L) {
-                    speed = if (position == 8) SignalReading.Unavailable
-                    else SignalReading.Sample(position * 5.0, timestamp)
-                    val speedValue = position * 5
-                    val speedRequest = ObdPids.request(ObdPids.VEHICLE_SPEED)
-                    if (speed is SignalReading.Unavailable) {
-                        record(DiagnosticStage.POLLING, "Vehicle speed unavailable", speedRequest, "NO DATA")
-                    } else {
-                        record(DiagnosticStage.POLLING, "Vehicle speed · $speedValue km/h", speedRequest,
-                            "41 0D ${ObdPids.hex(speedValue)}")
-                    }
-                }
-                mutableState.value = DiagnosticState.Live(
-                    protocol = "Simulated CAN",
-                    engineRpm = rpm,
-                    speedKmh = speed,
-                    gear = if (position == 0) GearPosition.Neutral else GearPosition.Forward(1 + position / 3),
-                    odometerKm = SignalReading.Sample(12_480.0 + tick * 0.01, timestamp),
-                    telemetry = simulatedVitals(tick, timestamp),
-                )
-                delay(500)
-                tick++
-            }
+            pollLikeTheBike()
+        }
+    }
+
+    /**
+     * Asks every [POLL_MILLIS] like the live session, and gets [EcuSampler]'s answers about
+     * [SyntheticRide]: a new value only every ~200 ms, the same one repeated in between.
+     */
+    private suspend fun CoroutineScope.pollLikeTheBike() {
+        val ecu = EcuSampler()
+        val startedAt = System.nanoTime() / 1_000_000
+        var odometer = 12_480.0
+        var previousAt = startedAt
+        while (isActive) {
+            val now = System.nanoTime() / 1_000_000
+            val elapsed = now - startedAt
+            val reply = ecu.reply(now) { SyntheticRide.at(elapsed) }
+            odometer += reply.speedKmh * (now - previousAt) / 3_600_000.0
+            previousAt = now
+            val raw = (reply.rpm * 4).toInt()
+            val speed = reply.speedKmh.toInt()
+            record(
+                DiagnosticStage.POLLING,
+                "Engine speed · ${reply.rpm} rpm · Vehicle speed · ${reply.speedKmh} km/h",
+                ObdPids.singleResponse(ObdPids.RPM_AND_SPEED),
+                "41 0C ${ObdPids.hex(raw shr 8)} ${ObdPids.hex(raw and 0xFF)} 0D ${ObdPids.hex(speed)} \r\r>",
+            )
+            mutableState.value = DiagnosticState.Live(
+                protocol = "Simulated CAN",
+                engineRpm = SignalReading.Sample(reply.rpm, now),
+                speedKmh = SignalReading.Sample(reply.speedKmh, now),
+                gear = reply.gear,
+                odometerKm = SignalReading.Sample(odometer, now),
+                telemetry = simulatedVitals(elapsed / 500, now),
+            )
+            delay(POLL_MILLIS)
         }
     }
 
@@ -98,8 +98,8 @@ internal class SimulatedDiagnosticSession(private val scope: CoroutineScope) : D
     }
 
     private companion object {
-        val DEMO_RPM = intArrayOf(1_100, 1_500, 2_600, 3_800, 4_900, 6_300,
-            7_600, 8_450, 6_900, 4_600, 2_900, 1_700)
+        /** The live session's pace with single-reply requests: ~15 requests a second. */
+        const val POLL_MILLIS = 66L
     }
 
     /** Engine vitals within the ranges the reference bike reported, drifting slowly. */

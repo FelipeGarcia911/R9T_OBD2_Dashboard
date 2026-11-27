@@ -13,6 +13,7 @@ A cheap Bluetooth ELM327 adapter plugged into the bike's diagnostic port is all 
 - **Two displays, one tap apart.** *Sport* is a round tachometer with the speed in its center; *Classic* is a bar tachometer that climbs the left edge and runs across the top. Switch between them from the bottom of the screen; the app remembers your choice.
 - **Engine vitals at a glance.** Engine and oil temperature, battery voltage and intake air temperature, refreshed about every 10 seconds; they change slowly, so RPM and speed keep the bus.
 - **Shift light.** From the start RPM the screen edges glow amber; from the shift RPM they flash red. Start RPM, shift RPM and flashing frequency are adjustable.
+- **Needle feel.** The tachometer needle's spring (damping and stiffness) can be tuned by hand; **Default** restores the feel confirmed on the bike.
 - **Ride mode.** While the dashboard is open the screen stays on and the system bars hide away.
 - **RPM and speed come first.** About 15 readings a second on the reference bike, asked for together in one request; slower readings are fitted in between, so the needle never waits for a temperature.
 - **Smooth drawing.** Each display keeps its scale, ticks and numerals in a cached GPU layer and redraws only the needle or lit segments, at a steady 60 Hz.
@@ -40,9 +41,9 @@ The debug build includes a simulator and a capture player, so you can explore ev
 
 1. Open the project in Android Studio, sync Gradle and run the `app` configuration with the **debug** variant. You need Android SDK Platform 37 and a device or emulator on Android 14 or newer.
 2. Tap **Show simulation**, then **Play capture** and **Open dashboard**, and turn the phone sideways. It plays a 75-second excerpt recorded on the reference bike, in a loop, with the ECU's real timing, so the dashboard behaves as it does on the bike.
-3. Use the tabs at the bottom to switch displays, and the **···** menu for the shift light settings or to go back to diagnostics.
+3. Use the tabs at the bottom to switch displays, and the **···** menu for the shift light and needle settings or to go back to diagnostics.
 
-**Open capture** plays any session log exported from the phone instead, and **Synthetic data** switches to a generated ride (including a simulated ECU timeout). Replays never touch Bluetooth.
+**Open capture** plays any session log exported from the phone instead, and **Synthetic data** switches to a generated 36-second ride with blips, the shift light's red zone and four gear changes, answered the way the bike's ECU answers (a new value about every 200 ms, repeats in between, Mode 01 resolution), to test the needle over its whole range. Replays never touch Bluetooth.
 
 ## Use it on the bike
 

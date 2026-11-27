@@ -42,6 +42,7 @@ internal fun DashboardToolbar(
     sourceLabel: String,
     onDiagnostics: () -> Unit,
     onShiftLight: () -> Unit,
+    onNeedle: () -> Unit,
     link: LinkState,
     connection: DashboardConnection,
     modifier: Modifier = Modifier,
@@ -52,7 +53,7 @@ internal fun DashboardToolbar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        DashboardMenu(sourceLabel, onDiagnostics, onShiftLight)
+        DashboardMenu(sourceLabel, onDiagnostics, onShiftLight, onNeedle)
         DisplaySelector(selected, onSelect)
         AdapterLinkLamp(link, connection, Modifier.fillMaxHeight())
     }
@@ -86,7 +87,12 @@ internal fun DisplaySelector(
 }
 
 @Composable
-private fun DashboardMenu(sourceLabel: String, onDiagnostics: () -> Unit, onShiftLight: () -> Unit) {
+private fun DashboardMenu(
+    sourceLabel: String,
+    onDiagnostics: () -> Unit,
+    onShiftLight: () -> Unit,
+    onNeedle: () -> Unit,
+) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val menuDescription = stringResource(R.string.dashboard_menu)
     Box {
@@ -103,6 +109,10 @@ private fun DashboardMenu(sourceLabel: String, onDiagnostics: () -> Unit, onShif
             DropdownMenuItem(text = { Text(stringResource(R.string.dashboard_menu_shift_light)) }, onClick = {
                 expanded = false
                 onShiftLight()
+            })
+            DropdownMenuItem(text = { Text(stringResource(R.string.dashboard_menu_needle)) }, onClick = {
+                expanded = false
+                onNeedle()
             })
             DropdownMenuItem(text = { Text(stringResource(R.string.dashboard_menu_diagnostics)) }, onClick = {
                 expanded = false

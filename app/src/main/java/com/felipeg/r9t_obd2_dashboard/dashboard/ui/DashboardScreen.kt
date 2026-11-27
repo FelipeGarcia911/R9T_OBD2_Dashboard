@@ -12,7 +12,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.CompositionLocalProvider
+import com.felipeg.r9t_obd2_dashboard.dashboard.needle.NeedleSettingsStore
 import com.felipeg.r9t_obd2_dashboard.dashboard.shiftlight.ShiftLightSettingsStore
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.needle.LocalNeedleSettings
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.needle.NeedleSettingsDialog
+import com.felipeg.r9t_obd2_dashboard.dashboard.ui.needle.rememberNeedleSettingsStore
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.classic.ClassicDashboardPanel
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.link.DashboardConnection
 import com.felipeg.r9t_obd2_dashboard.dashboard.ui.shiftlight.ShiftLightOverlay
@@ -32,6 +37,7 @@ internal fun DashboardScreen(
     connection: DashboardConnection,
     layoutStore: DashboardLayoutStore = rememberDashboardLayoutStore(),
     shiftLightStore: ShiftLightSettingsStore = rememberShiftLightSettingsStore(),
+    needleStore: NeedleSettingsStore = rememberNeedleSettingsStore(),
 ) {
     RideMode()
     val time = rememberDashboardClock()
@@ -39,11 +45,15 @@ internal fun DashboardScreen(
     var layout by rememberSaveable { mutableStateOf(layoutStore.load()) }
     var shiftLight by remember { mutableStateOf(shiftLightStore.load()) }
     var editingShiftLight by rememberSaveable { mutableStateOf(false) }
+    var needle by remember { mutableStateOf(needleStore.load()) }
+    var editingNeedle by rememberSaveable { mutableStateOf(false) }
     val shiftPhase = rememberShiftLightPhase(readings.rpm, shiftLight)
     Box(modifier.fillMaxSize()) {
-        when (layout) {
-            DashboardLayout.SPORT -> SportDashboardPanel(readings, time)
-            DashboardLayout.CLASSIC -> ClassicDashboardPanel(readings, time)
+        CompositionLocalProvider(LocalNeedleSettings provides needle) {
+            when (layout) {
+                DashboardLayout.SPORT -> SportDashboardPanel(readings, time)
+                DashboardLayout.CLASSIC -> ClassicDashboardPanel(readings, time)
+            }
         }
         // Same place on every display, so the rider always finds it in one spot.
         DashboardToolbar(
@@ -55,6 +65,7 @@ internal fun DashboardScreen(
             sourceLabel = sourceLabel,
             onDiagnostics = onDiagnostics,
             onShiftLight = { editingShiftLight = true },
+            onNeedle = { editingNeedle = true },
             link = readings.link,
             connection = connection,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = TOOLBAR_BOTTOM_INSET),
@@ -70,6 +81,16 @@ internal fun DashboardScreen(
                 shiftLightStore.save(changed)
             },
             onDismiss = { editingShiftLight = false },
+        )
+    }
+    if (editingNeedle) {
+        NeedleSettingsDialog(
+            settings = needle,
+            onChange = { changed ->
+                needle = changed
+                needleStore.save(changed)
+            },
+            onDismiss = { editingNeedle = false },
         )
     }
 }
